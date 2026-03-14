@@ -53,7 +53,7 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
 
   const TOKEN    = process.env.GITHUB_TOKEN;
-  const OWNER    = process.env.GITHUB_OWNER || 'mikeod38';
+  const OWNER    = process.env.GITHUB_OWNER || 'ODonnellLab';
   const ADMIN_PW = process.env.ADMIN_PASSWORD || '';
 
   if (!TOKEN) return err(500, 'GITHUB_TOKEN not set in Netlify environment variables.');
