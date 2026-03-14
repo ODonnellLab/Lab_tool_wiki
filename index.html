@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ODonnell Lab — Tools & Wiki</title>
+<link rel="stylesheet" href="/shared.css">
+<style>
+  .hero { padding: 4rem 3rem 3rem; max-width: 900px; margin: 0 auto; }
+  .hero-eyebrow { font-family: var(--mono); font-size: 12px; color: var(--accent2); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1rem; }
+  .hero h1 { font-size: 2.5rem; margin-bottom: 0.75rem; }
+  .hero-sub { font-size: 16px; color: var(--text-muted); max-width: 560px; margin-bottom: 3rem; line-height: 1.7; }
+
+  .tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.25rem; max-width: 900px; margin: 0 auto; padding: 0 3rem 4rem; }
+
+  .tool-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; text-decoration: none; display: flex; flex-direction: column; gap: 0.75rem; transition: border-color 0.15s, background 0.15s; position: relative; overflow: hidden; }
+  .tool-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--card-accent, var(--accent)); opacity: 0.7; }
+  .tool-card:hover { border-color: var(--card-accent, var(--accent)); background: var(--surface2); }
+  .tool-icon { font-size: 24px; line-height: 1; }
+  .tool-name { font-family: var(--sans); font-size: 15px; font-weight: 600; color: var(--text); }
+  .tool-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; flex: 1; }
+  .tool-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .tool-tag { font-family: var(--mono); font-size: 10px; padding: 0.15em 0.5em; border-radius: 3px; background: rgba(255,255,255,0.05); color: var(--text-dim); border: 1px solid var(--border2); }
+  .tool-card.coming-soon { opacity: 0.45; pointer-events: none; }
+  .coming-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); position: absolute; top: 0.75rem; right: 0.75rem; background: var(--surface2); border: 1px solid var(--border2); padding: 0.1em 0.5em; border-radius: 3px; }
+
+  .section-label { font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; padding: 0 3rem; margin-bottom: 1rem; max-width: 900px; margin-left: auto; margin-right: auto; }
+
+  @media (max-width: 600px) {
+    .hero, .tool-grid, .section-label { padding-left: 1.5rem; padding-right: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="site-logo">⬡ ODONNELL LAB</a>
+  <nav class="site-nav">
+    <a href="/" class="active">Home</a>
+    <a href="/sequencing.html">Sequencing Wiki</a>
+  </nav>
+</header>
+
+<div class="hero">
+  <div class="hero-eyebrow">ODonnell Lab · Tools & Reference</div>
+  <h1>Lab Wiki</h1>
+  <p class="hero-sub">Internal tools, databases, and reference guides. Click any card to get started.</p>
+</div>
+
+<div class="section-label">Sequencing</div>
+<div class="tool-grid" style="padding-top:0">
+  <a href="/sequencing.html" class="tool-card" style="--card-accent:var(--accent)">
+    <div class="tool-icon">🧬</div>
+    <div class="tool-name">Illumina Sequencing Wiki</div>
+    <div class="tool-desc">Library structure diagrams, amplicon primer design tool, Illumina adapter database, and lab custom index registry.</div>
+    <div class="tool-tags"><span class="tool-tag">Illumina</span><span class="tool-tag">Adapters</span><span class="tool-tag">Primer Design</span><span class="tool-tag">Index Registry</span></div>
+  </a>
+  <div class="tool-card coming-soon" style="--card-accent:var(--accent4)">
+    <div class="coming-label">coming soon</div>
+    <div class="tool-icon">🔬</div>
+    <div class="tool-name">Protocol Library</div>
+    <div class="tool-desc">Standard lab protocols with version history and notes.</div>
+    <div class="tool-tags"><span class="tool-tag">Protocols</span><span class="tool-tag">Methods</span></div>
+  </div>
+</div>
+
+<div class="section-label" style="margin-top:1.5rem">Strains & Reagents</div>
+<div class="tool-grid" style="padding-top:0">
+  <div class="tool-card coming-soon" style="--card-accent:var(--accent2)">
+    <div class="coming-label">coming soon</div>
+    <div class="tool-icon">🪱</div>
+    <div class="tool-name">Strain Database</div>
+    <div class="tool-desc">Lab strain registry with genotypes, sources, and notes.</div>
+    <div class="tool-tags"><span class="tool-tag">C. elegans</span><span class="tool-tag">Strains</span></div>
+  </div>
+  <div class="tool-card coming-soon" style="--card-accent:var(--accent5)">
+    <div class="coming-label">coming soon</div>
+    <div class="tool-icon">🧪</div>
+    <div class="tool-name">Reagent Tracker</div>
+    <div class="tool-desc">Shared reagent inventory and ordering log.</div>
+    <div class="tool-tags"><span class="tool-tag">Reagents</span><span class="tool-tag">Inventory</span></div>
+  </div>
+  <div class="tool-card coming-soon" style="--card-accent:var(--accent3)">
+    <div class="coming-label">coming soon</div>
+    <div class="tool-icon">🧫</div>
+    <div class="tool-name">Plasmid Registry</div>
+    <div class="tool-desc">Lab plasmid collection with maps, sequences, and notes.</div>
+    <div class="tool-tags"><span class="tool-tag">Plasmids</span><span class="tool-tag">Cloning</span></div>
+  </div>
+</div>
+
+</body>
+</html>

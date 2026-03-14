@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sequencing Wiki — ODonnell Lab</title>
+<link rel="stylesheet" href="/shared.css">
+<style>
+  /* ── SEQUENCING PAGE SPECIFIC ─────────────────────────── */
+  --r1-color: #58a6ff;
+  --r2-color: #3fb950;
+  --index-color: #ffa657;
+  --insert-color: #d2a8ff;
+  --p5-color: #f78166;
+  --p7-color: #79c0ff;
+
+  /* Layout */
+  .layout { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 56px); }
+
+  /* Sidebar */
+  aside { background: var(--surface); border-right: 1px solid var(--border); padding: 1.5rem 0; position: sticky; top: 56px; height: calc(100vh - 56px); overflow-y: auto; }
+  .sidebar-section { margin-bottom: 1.5rem; }
+  .sidebar-label { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; padding: 0 1.25rem; margin-bottom: 0.4rem; }
+  .sidebar-link { display: block; padding: 0.3rem 1.25rem; color: var(--text-muted); text-decoration: none; font-size: 13px; border-left: 2px solid transparent; transition: all 0.15s; }
+  .sidebar-link:hover { color: var(--text); background: var(--surface2); }
+  .sidebar-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(88,166,255,0.05); }
+
+  /* Main */
+  main { padding: 2.5rem 3rem; max-width: 960px; }
+  .page-section { display: none; }
+  .page-section.active { display: block; }
+  .page-subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 2rem; border-bottom: 1px solid var(--border2); padding-bottom: 1.5rem; }
+
+  /* Sequence colors */
+  .s-p5 { color: var(--p5-color); }
+  .s-p7 { color: var(--p7-color); }
+  .s-r1 { color: var(--r1-color); }
+  .s-r2 { color: var(--r2-color); }
+  .s-idx { color: var(--index-color); }
+  .s-insert { color: var(--insert-color); }
+  .s-gs { color: #e3b341; }
+
+  /* Seq legend */
+  .seq-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin: 0.75rem 0; font-size: 12px; font-family: var(--mono); }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; color: var(--text-muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* Seq blocks */
+  .seq-block { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem 1.5rem; margin: 1rem 0; overflow-x: auto; }
+  .seq-block pre { font-family: var(--mono); font-size: 12px; line-height: 1.8; white-space: pre; color: var(--text-muted); }
+  code { font-family: var(--mono); font-size: 12px; background: rgba(255,255,255,0.07); padding: 0.15em 0.4em; border-radius: 3px; color: var(--accent2); }
+
+  /* Diagram */
+  .diagram-scroll { overflow-x: auto; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin: 1rem 0; }
+  .diagram-scroll pre { font-family: var(--mono); font-size: 12px; line-height: 1.9; white-space: pre; min-width: max-content; }
+  .seq-annot-row { display: flex; gap: 0.5rem; flex-wrap: wrap; padding: 0.5rem 0 0.25rem; border-top: 1px solid var(--border2); margin-top: 0.5rem; }
+  .annot { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 0.03em; white-space: nowrap; opacity: 0.85; }
+
+  /* Steps */
+  .steps { display: flex; flex-direction: column; gap: 0; position: relative; margin: 1.5rem 0; }
+  .steps::before { content: ''; position: absolute; left: 18px; top: 36px; bottom: 36px; width: 2px; background: var(--border); }
+  .step { display: flex; gap: 1.25rem; padding: 1rem 0; }
+  .step-num { width: 36px; height: 36px; border-radius: 50%; background: var(--surface2); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--accent); flex-shrink: 0; z-index: 1; }
+  .step-body { flex: 1; padding-top: 0.5rem; }
+  .step-title { font-weight: 600; color: var(--text); margin-bottom: 0.4rem; font-size: 14px; }
+  .step-desc { color: var(--text-muted); font-size: 13px; }
+
+  /* Tabs */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; gap: 0; }
+  .tab { padding: 0.6rem 1.25rem; font-size: 13px; font-family: var(--mono); color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; user-select: none; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Designer */
+  .designer-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; margin: 1rem 0; }
+  .designer-card h3 { margin-top: 0; }
+  .input-group { margin-bottom: 1.25rem; }
+  .input-label { font-family: var(--mono); font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; display: block; }
+  .result-box { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-top: 1rem; font-family: var(--mono); font-size: 12px; line-height: 1.9; word-break: break-all; }
+  .result-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.25rem; }
+
+  /* Filter bar */
+  .filter-bar { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+
+  /* Add row */
+  .add-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .add-row input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 0.4rem 0.6rem; border-radius: 5px; font-family: var(--mono); font-size: 12px; outline: none; }
+  .add-row input:focus { border-color: var(--accent); }
+  .del-btn { background: transparent; border: none; color: var(--accent3); cursor: pointer; font-size: 16px; padding: 0 0.4rem; opacity: 0.6; transition: opacity 0.15s; }
+  .del-btn:hover { opacity: 1; }
+
+  /* Count badge */
+  .count-badge { display: inline-block; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 0.1em 0.6em; font-size: 11px; font-family: var(--mono); color: var(--text-muted); margin-left: 0.5rem; }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    aside { display: none; }
+    main { padding: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="site-logo">⬡ ODONNELL LAB</a>
+  <nav class="site-nav">
+    <a href="/">Home</a>
+    <a href="/sequencing.html" class="current-page">Sequencing Wiki</a>
+  </nav>
+  <nav class="site-nav" style="border-left:1px solid var(--border2);margin-left:0.5rem;padding-left:0.5rem;">
+    <a href="#" class="active" onclick="showSection('overview',this)">Overview</a>
+    <a href="#" onclick="showSection('library',this)">Library Structure</a>
+    <a href="#" onclick="showSection('amplicon',this)">Amplicon Design</a>
+    <a href="#" onclick="showSection('adapters',this)">Adapter DB</a>
+    <a href="#" onclick="showSection('custom',this)">Custom Indexes</a>
+  </nav>
+</header>
+
+<div class="layout">
+  <aside>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Overview</div>
+      <a href="#" class="sidebar-link active" onclick="showSection('overview',null)">Introduction</a>
+      <a href="#" class="sidebar-link" onclick="showSection('overview',null);scrollTo('adaptor-anatomy')">Adaptor Anatomy</a>
+      <a href="#" class="sidebar-link" onclick="showSection('overview',null);scrollTo('sequencing-flow')">Sequencing Flow</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Library Structure</div>
+      <a href="#" class="sidebar-link" onclick="showSection('library',null)">Truseq Single Index</a>
+      <a href="#" class="sidebar-link" onclick="showSection('library',null)">Truseq Dual Index</a>
+      <a href="#" class="sidebar-link" onclick="showSection('library',null)">Nextera Dual Index</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Amplicon Design</div>
+      <a href="#" class="sidebar-link" onclick="showSection('amplicon',null)">Primer Architecture</a>
+      <a href="#" class="sidebar-link" onclick="showSection('amplicon',null)">Primer Designer Tool</a>
+      <a href="#" class="sidebar-link" onclick="showSection('amplicon',null)">Design Considerations</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Adapter Database</div>
+      <a href="#" class="sidebar-link" onclick="showSection('adapters',null)">Nextera / Illumina Prep</a>
+      <a href="#" class="sidebar-link" onclick="showSection('adapters',null)">TruSeq Kits</a>
+      <a href="#" class="sidebar-link" onclick="showSection('adapters',null)">AmpliSeq</a>
+      <a href="#" class="sidebar-link" onclick="showSection('adapters',null)">All Sequences</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Custom Indexes</div>
+      <a href="#" class="sidebar-link" onclick="showSection('custom',null)">Lab Index Registry</a>
+      <a href="#" class="sidebar-link" onclick="showSection('custom',null)">Add New Index</a>
+      <a href="#" class="sidebar-link" onclick="showSection('custom',null)">Conflict Checker</a>
+    </div>
+  </aside>
+
+  <main>
+
+    <!-- ===== OVERVIEW ===== -->
+    <div class="page-section active" id="s-overview">
+      <h1>Illumina Sequencing Guide</h1>
+      <p class="page-subtitle">Lab reference for library structures, amplicon primer design, and custom index management</p>
+
+      <p>Illumina sequencing is fundamentally <strong>sequencing by synthesis (SBS)</strong>. Every library prep kit — regardless of brand, application, or sample type — accomplishes one thing: adding defined adaptor sequences to both ends of your DNA inserts. Understanding these adaptors is essential for designing custom amplicon primers and multiplexing strategies.</p>
+
+      <div class="callout green">
+        <div class="callout-title">Core Principle</div>
+        <p>All Illumina libraries must contain the P5 and P7 flow cell binding sequences at their ends. Everything in between (sequencing primers, indexes, insert) can vary by kit and application.</p>
+      </div>
+
+      <h2 id="adaptor-anatomy">Adaptor Anatomy</h2>
+      <p>Two essential sequences anchor every Illumina library to the flow cell:</p>
+
+      <div class="seq-block">
+        <pre><span class="s-p5">P5 adaptor: 5'- AATGATACGGCGACCACCGAGATCTACAC -3'</span>
+
+<span class="s-p7">P7 adaptor: 5'- CAAGCAGAAGACGGCATACGAGAT -3'</span></pre>
+      </div>
+
+      <p>Between P5 and P7, libraries contain <strong>sequencing primer binding sites</strong> (e.g. Truseq R1, R2), optional <strong>index sequences</strong> (i5, i7) for multiplexing, and the <strong>DNA insert</strong> itself.</p>
+
+      <div class="seq-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--p5-color)"></div>P5 (flow cell)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--p7-color)"></div>P7 (flow cell)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--r1-color)"></div>Read 1 primer</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--r2-color)"></div>Read 2 primer</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--index-color)"></div>Index (i5/i7)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--insert-color)"></div>Insert DNA</div>
+      </div>
+
+      <h2 id="sequencing-flow">Sequencing Read Order</h2>
+      <p>Illumina instruments sequence reads in a defined order, which determines how indexes are read and how sample sheets must be configured.</p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Read 1 <span class="badge badge-blue">R1</span></div>
+            <div class="step-desc">Read 1 sequencing primer anneals and extends through the insert (bottom strand as template). For Truseq libraries: primes from <code>ACACTCTTTCCCTACACGACGCTCTTCCGATCT</code>.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Index 1 (i7) <span class="badge badge-orange">i7</span></div>
+            <div class="step-desc">The i7 index is read first. Located adjacent to P7. Always read as written in the adapter sequence (forward orientation for sample sheet on most instruments).</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Index 2 (i5) <span class="badge badge-purple">i5</span></div>
+            <div class="step-desc"><strong>Instrument-dependent:</strong> MiSeq, NovaSeq v1.0, HiSeq 2000/2500 read i5 as reverse complement. iSeq, MiniSeq, NextSeq, HiSeq X/3000/4000, NovaSeq v1.5 read i5 forward (in-solution primer). Check instrument before populating sample sheet.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">Read 2 <span class="badge badge-green">R2</span></div>
+            <div class="step-desc">After cluster regeneration, Read 2 primer extends in the reverse direction through the insert (top strand as template). For Truseq: primes from <code>TCTAGCCTTCTCGTGTGCAGACTTGAGGTCAGTG</code>.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout orange">
+        <div class="callout-title">⚠ i5 Reverse Complement Warning</div>
+        <p>iSeq, MiniSeq, NextSeq 500/550, HiSeq 3000/4000/X, and NovaSeq 6000 v1.5 require the reverse complement of i5 in the sample sheet. If using Illumina software (IEM, BaseSpace, Local Run Manager), this is done automatically. Manual sample sheets require careful attention to which column to use from the adapter tables.</p>
+      </div>
+    </div>
+
+    <!-- ===== LIBRARY STRUCTURE ===== -->
+    <div class="page-section" id="s-library">
+      <h1>Library Structures</h1>
+      <p class="page-subtitle">Detailed diagrams of Truseq and Nextera library architectures</p>
+
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('lib','single',this)">Truseq Single Index</div>
+        <div class="tab" onclick="switchTab('lib','dual',this)">Truseq Dual Index</div>
+        <div class="tab" onclick="switchTab('lib','nextera',this)">Nextera Dual Index</div>
+      </div>
+
+      <div class="tab-panel active" id="lib-single">
+        <h3>Truseq Single Index Library</h3>
+        <p>Uses only an i7 index. The i5 side has no sample-specific barcode. Suitable for lower-plex experiments on instruments that don't require dual indexing.</p>
+        <div class="diagram-scroll">
+          <pre><span class="s-p5">5'- AATGATACGGCGACCACCGAGATCTACAC</span><span class="s-r1">TCTTTCCCTACACGACGCTCTTCCGATCT</span>-<span class="s-insert">insert</span>-<span class="s-r2">AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC</span><span class="s-idx">NNNNNNNN</span><span class="s-p7">ATCTCGTATGCCGTCTTCTGCTTG</span> -3'
+<span class="s-p5">3'- TTACTATGCCGCTGGTGGCTCTAGATGTG</span><span class="s-r1">AGAAAGGGATGTGCTGCGAGAAGGCTAGA</span>-<span class="s-insert">insert</span>-<span class="s-r2">TCTAGCCTTCTCGTGTGCAGACTTGAGGTCAGTG</span><span class="s-idx">NNNNNNNN</span><span class="s-p7">TAGAGCATACGGCAGAAGACGAAC</span> -5'</pre>
+          <div class="seq-annot-row">
+            <span class="annot" style="color:var(--p5-color)">◂ Illumina P5 ▸</span>
+            <span class="annot" style="color:var(--r1-color)">◂ TruSeq Read 1 ▸</span>
+            <span class="annot" style="color:var(--insert-color)">◂ Insert ▸</span>
+            <span class="annot" style="color:var(--r2-color)">◂ TruSeq Read 2 ▸</span>
+            <span class="annot" style="color:var(--index-color)">◂ i7 ▸</span>
+            <span class="annot" style="color:var(--p7-color)">◂ Illumina P7 ▸</span>
+          </div>
+        </div>
+
+        <h3>Read 1 Sequencing</h3>
+        <div class="diagram-scroll">
+          <pre><span style="color:var(--text-dim)">                     </span><span class="s-r1">5'- ACACTCTTTCCCTACACGACGCTCTTCCGATCT----&gt;</span>
+<span class="s-p5">3'- TTACTATGCCGCTGGTGGCTCTAGATGTG</span><span class="s-r1">AGAAAGGGATGTGCTGCGAGAAGGCTAGA</span>-<span class="s-insert">insert</span>-<span class="s-r2">TCTAGCCTTCTCGTGTGCAGACTTGAGGTCAGTG</span><span class="s-idx">NNNNNNNN</span><span class="s-p7">TAGAGCATACGGCAGAAGACGAAC</span> -5'</pre>
+        </div>
+
+        <h3>Index 1 (i7) Sequencing</h3>
+        <div class="diagram-scroll">
+          <pre><span style="color:var(--text-dim)">                                                                   </span><span class="s-r2">5'- GATCGGAAGAGCACACGTCTGAACTCCAGTCAC-------&gt;</span>
+<span class="s-p5">3'- TTACTATGCCGCTGGTGGCTCTAGATGTG</span><span class="s-r1">AGAAAGGGATGTGCTGCGAGAAGGCTAGA</span>-<span class="s-insert">insert</span>-<span class="s-r2">TCTAGCCTTCTCGTGTGCAGACTTGAGGTCAGTG</span><span class="s-idx">NNNNNNNN</span><span class="s-p7">TAGAGCATACGGCAGAAGACGAAC</span> -5'</pre>
+        </div>
+
+        <h3>Read 2 Sequencing</h3>
+        <div class="diagram-scroll">
+          <pre><span class="s-p5">5'- AATGATACGGCGACCACCGAGATCTACAC</span><span class="s-r1">TCTTTCCCTACACGACGCTCTTCCGATCT</span>-<span class="s-insert">insert</span>-<span class="s-r2">AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC</span><span class="s-idx">NNNNNNNN</span><span class="s-p7">ATCTCGTATGCCGTCTTCTGCTTG</span> -3'
+<span style="color:var(--text-dim)">                                                               </span><span class="s-r2">&lt;------TCTAGCCTTCTCGTGTGCAGACTTGAGGTCAGTG -5'</span></pre>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="lib-dual">
+        <h3>Truseq Dual Index Library</h3>
+        <p>Uses both i5 and i7 indexes, enabling higher-plex multiplexing. The i5 index is embedded on the P5 side. This is the recommended format for most modern experiments.</p>
+        <div class="diagram-scroll">
+          <pre><span class="s-p5">5'- AATGATACGGCGACCACCGAGATCTACAC</span><span class="s-idx">NNNNNNNN</span><span class="s-r1">ACACTCTTTCCCTACACGACGCTCTTCCGATCT</span>-<span class="s-insert">insert</span>-<span class="s-r2">AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC</span><span class="s-idx">NNNNNNNN</span><span class="s-p7">ATCTCGTATGCCGTCTTCTGCTTG</span> -3'
+<span class="s-p5">3'- TTACTATGCCGCTGGTGGCTCTAGATGTG</span><span class="s-idx">NNNNNNNN</span><span class="s-r1">TGTGAGAAAGGGATGTGCTGCGAGAAGGCTAGA</span>-<span class="s-insert">insert</span>-<span class="s-r2">TCTAGCCTTCTCGTGTGCAGACTTGAGGTCAGTG</span><span class="s-idx">NNNNNNNN</span><span class="s-p7">TAGAGCATACGGCAGAAGACGAAC</span> -5'</pre>
+          <div class="seq-annot-row">
+            <span class="annot" style="color:var(--p5-color)">◂ P5 ▸</span>
+            <span class="annot" style="color:var(--index-color)">◂ i5 ▸</span>
+            <span class="annot" style="color:var(--r1-color)">◂ TruSeq Read 1 ▸</span>
+            <span class="annot" style="color:var(--insert-color)">◂ Insert ▸</span>
+            <span class="annot" style="color:var(--r2-color)">◂ TruSeq Read 2 ▸</span>
+            <span class="annot" style="color:var(--index-color)">◂ i7 ▸</span>
+            <span class="annot" style="color:var(--p7-color)">◂ P7 ▸</span>
+          </div>
+        </div>
+
+        <div class="callout">
+          <div class="callout-title">Key Sequences</div>
+          <p><strong>Truseq R1 primer site:</strong> <code class="s-r1">TCCCTACACGACGCTCTTCCGATCT</code> (as provided to sequencing service)<br>
+          <strong>Truseq R2 primer site:</strong> <code class="s-r2">GTTCAGACGTGTGCTCTTCCGATCT</code> (as provided to sequencing service)</p>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="lib-nextera">
+        <h3>Nextera Dual Index Library</h3>
+        <p>Uses Nextera-specific Read 1 and Read 2 sequencing primer binding sites. The transposase adapter CTGTCTCTTATACACATCT is the key trimming sequence.</p>
+        <div class="diagram-scroll">
+          <pre><span class="s-p5">5'- AATGATACGGCGACCACCGAGATCTACAC</span><span class="s-idx">NNNNNNNN</span><span class="s-r1">TCGTCGGCAGCGTCAGATGTGTATAAGAGACAG</span>-<span class="s-insert">insert</span>-<span class="s-r2">CTGTCTCTTATACACATCTCCGAGCCCACGAGAC</span><span class="s-idx">NNNNNNNN</span><span class="s-p7">ATCTCGTATGCCGTCTTCTGCTTG</span> -3'
+<span class="s-p5">3'- TTACTATGCCGCTGGTGGCTCTAGATGTG</span><span class="s-idx">NNNNNNNN</span><span class="s-r1">AGCAGCCGTCGCAGTCTACACATATTCTCTGTC</span>-<span class="s-insert">insert</span>-<span class="s-r2">GACAGAGAATATGTGTAGAGGCTCGGGTGCTCTG</span><span class="s-idx">NNNNNNNN</span><span class="s-p7">TAGAGCATACGGCAGAAGACGAAC</span> -5'</pre>
+          <div class="seq-annot-row">
+            <span class="annot" style="color:var(--p5-color)">◂ P5 ▸</span>
+            <span class="annot" style="color:var(--index-color)">◂ i5 ▸</span>
+            <span class="annot" style="color:var(--r1-color)">◂ Nextera Read 1 ▸</span>
+            <span class="annot" style="color:var(--insert-color)">◂ Insert ▸</span>
+            <span class="annot" style="color:var(--r2-color)">◂ Nextera Read 2 ▸</span>
+            <span class="annot" style="color:var(--index-color)">◂ i7 ▸</span>
+            <span class="annot" style="color:var(--p7-color)">◂ P7 ▸</span>
+          </div>
+        </div>
+        <p>Nextera adapter trimming sequence: <code>CTGTCTCTTATACACATCT</code></p>
+      </div>
+    </div>
+
+    <!-- ===== AMPLICON DESIGN ===== -->
+    <div class="page-section" id="s-amplicon">
+      <h1>Amplicon Primer Design</h1>
+      <p class="page-subtitle">Guide for designing amplicon sequencing primers compatible with TruSeq R1/R2 services</p>
+
+      <h2>Primer Architecture</h2>
+      <p>Sequencing services that use TruSeq Read 1 and Read 2 primer pairs expect amplicons structured as follows. Your PCR primers must add the Truseq adapter sequences, an optional inline index, and your gene-specific sequence.</p>
+
+      <div class="callout">
+        <div class="callout-title">Service-Provided Truseq Sequences</div>
+        <p>
+          <strong>R1 (Read 1 primer site):</strong> <code class="s-r1">TCCCTACACGACGCTCTTCCGATCT</code><br>
+          <strong>R2 (Read 2 primer site):</strong> <code class="s-r2">GTTCAGACGTGTGCTCTTCCGATCT</code>
+        </p>
+      </div>
+
+      <h3>Forward Primer (R1-based)</h3>
+      <div class="seq-block">
+        <pre><span class="s-r1">TCCCTACACGACGCTCTTCCGATCT</span>-<span class="s-idx">NNNNNN</span>-<span class="s-gs">&lt;gene-specific forward sequence&gt;</span></pre>
+        <div class="seq-annot-row" style="margin-top:0.25rem;">
+          <span class="annot" style="color:var(--r1-color)">◂ TruSeq R1 primer site ▸</span>
+          <span class="annot" style="color:var(--index-color)">◂ inline index ▸</span>
+          <span class="annot" style="color:#e3b341">◂ GSP: binds target, + strand ▸</span>
+        </div>
+      </div>
+
+      <h3>Reverse Primer (R2-based)</h3>
+      <div class="seq-block">
+        <pre><span class="s-r2">GTTCAGACGTGTGCTCTTCCGATCT</span>-<span class="s-idx">NNNNNN</span>-<span class="s-gs">&lt;reverse complement of gene-specific reverse sequence&gt;</span></pre>
+        <div class="seq-annot-row" style="margin-top:0.25rem;">
+          <span class="annot" style="color:var(--r2-color)">◂ TruSeq R2 primer site ▸</span>
+          <span class="annot" style="color:var(--index-color)">◂ inline index ▸</span>
+          <span class="annot" style="color:#e3b341">◂ GSP: binds target, - strand RC ▸</span>
+        </div>
+      </div>
+
+      <h2>Resulting Amplicon Structure</h2>
+      <p>When these primers are used in PCR, the amplicon will have the following structure, which is directly sequenceable after the TruSeq R1/R2 sequencing primers anneal:</p>
+      <div class="diagram-scroll">
+        <pre>5'—<span class="s-r1">TCCCTACACGACGCTCTTCCGATCT</span>—<span class="s-idx">idx_fwd</span>—<span class="s-gs">[fwd GSP → insert ← rev GSP]</span>—<span class="s-idx">idx_rev_rc</span>—<span class="s-r2">AGATCGGAAGAGCACGTCTGAAC</span>—3'</pre>
+        <div class="seq-annot-row">
+          <span class="annot" style="color:var(--r1-color)">◂ R1 site ▸</span>
+          <span class="annot" style="color:var(--index-color)">◂ idx ▸</span>
+          <span class="annot" style="color:#e3b341">◂ insert ▸</span>
+          <span class="annot" style="color:var(--index-color)">◂ idx ▸</span>
+          <span class="annot" style="color:var(--r2-color)">◂ R2 site ▸</span>
+        </div>
+        <div style="margin-top:0.5rem;font-family:var(--mono);font-size:11px;">
+          <div style="color:var(--r1-color)">→ R1 reads left to right from R1 site through index + insert</div>
+          <div style="color:var(--r2-color)">← R2 reads right to left from R2 site through insert + index</div>
+        </div>
+      </div>
+
+      <h2>Multiplexing Strategy</h2>
+      <p>To pool multiple samples using a single sequencing lane, assign unique inline indexes (NNNNNN) to each sample's forward and/or reverse primers. These inline indexes are read as part of the sequencing read and demultiplexed computationally.</p>
+
+      <div class="callout green">
+        <div class="callout-title">Recommended Strategy</div>
+        <p>Use a unique 6–8bp inline index on the <strong>forward primer</strong> only. This simplifies demultiplexing since R1 always contains the index at a fixed position (immediately after the R1 primer site). Ensure indexes differ by ≥ 3 bp (Hamming distance) for error-tolerant demultiplexing.</p>
+      </div>
+
+      <div class="callout orange">
+        <div class="callout-title">⚠ Index Design Rules</div>
+        <p>• No homopolymer runs &gt; 2 bp (e.g. avoid AAAGCT)<br>
+        • Balanced GC content (40–60%)<br>
+        • No sequences identical or highly similar to existing Illumina indexes (check the Custom Index tab)<br>
+        • Minimum Hamming distance of 3 between all indexes in a pool<br>
+        • Avoid sequences matching common adapters or PhiX control</p>
+      </div>
+
+      <h2>Primer Designer Tool</h2>
+      <div class="designer-card">
+        <h3>Build Your Primers</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;">
+          <div>
+            <div class="input-group">
+              <label class="input-label">Forward Gene-Specific Sequence (5'→3')</label>
+              <input class="dna-input" id="fwd-gsp" placeholder="e.g. ATGCGATCGATCG..." oninput="buildPrimers()">
+            </div>
+            <div class="input-group">
+              <label class="input-label">Inline Index for Fwd Primer (6-8 bp, optional)</label>
+              <input class="dna-input" id="fwd-idx" placeholder="e.g. ACGTAG" oninput="buildPrimers()">
+            </div>
+          </div>
+          <div>
+            <div class="input-group">
+              <label class="input-label">Reverse Gene-Specific Sequence (5'→3')</label>
+              <input class="dna-input" id="rev-gsp" placeholder="e.g. TTACGCTAGCTA... (as written, will be RC'd)" oninput="buildPrimers()">
+            </div>
+            <div class="input-group">
+              <label class="input-label">Inline Index for Rev Primer (6-8 bp, optional)</label>
+              <input class="dna-input" id="rev-idx" placeholder="e.g. TAGCTA" oninput="buildPrimers()">
+            </div>
+          </div>
+        </div>
+
+        <div id="primer-results" style="display:none">
+          <div class="result-box" id="fwd-primer-out"></div>
+          <div class="result-box" style="margin-top:0.5rem" id="rev-primer-out"></div>
+          <div class="result-box" style="margin-top:0.5rem; font-size:11px;" id="primer-stats"></div>
+        </div>
+      </div>
+
+      <h2>Design Considerations</h2>
+      <h3>Gene-Specific Primer Design</h3>
+      <p>The gene-specific portion of your primer should follow standard PCR primer design rules, but with important caveats for amplicon sequencing:</p>
+      <ul style="color:var(--text-muted);font-size:13px;line-height:2;padding-left:1.5rem;margin-bottom:1rem;">
+        <li>Aim for Tm of 58–65°C for the gene-specific portion alone (not including the adapter)</li>
+        <li>Keep gene-specific portion to 18–25 bp</li>
+        <li>Avoid 3' end GC clamps longer than 3 consecutive G/C</li>
+        <li>Check for secondary structures and primer dimers with the adapter included</li>
+        <li>Amplicon size: aim for 200–500 bp for optimal cluster generation (accounts for adapter overhead)</li>
+      </ul>
+
+      <h3>Sequencing Depth</h3>
+      <p>With inline indexing, plan for approximately <strong>10,000–50,000 reads per sample per amplicon</strong> for quantitative applications. Deeper coverage improves variant detection sensitivity.</p>
+    </div>
+
+    <!-- ===== ADAPTER DB ===== -->
+    <div class="page-section" id="s-adapters">
+      <h1>Illumina Adapter Database</h1>
+      <p class="page-subtitle">Reference sequences from Document #1000000002694 v14 (July 2020)</p>
+
+      <div class="callout">
+        <div class="callout-title">Source</div>
+        <p>All sequences below are from the Illumina Adapter Sequences document v14. Oligonucleotide sequences © 2020 Illumina, Inc. All rights reserved.</p>
+      </div>
+
+      <div class="filter-bar">
+        <input class="filter-input" id="adapter-search" placeholder="Search by name or sequence..." oninput="filterAdapters()">
+        <select class="filter-select" id="adapter-kit" onchange="filterAdapters()">
+          <option value="">All Kits</option>
+          <option value="nextera">Nextera / Illumina Prep</option>
+          <option value="truseq">TruSeq</option>
+          <option value="ampli">AmpliSeq</option>
+          <option value="trusight">TruSight</option>
+          <option value="trimming">Trimming Sequences</option>
+        </select>
+        <select class="filter-select" id="adapter-type" onchange="filterAdapters()">
+          <option value="">All Types</option>
+          <option value="i7">i7 Index</option>
+          <option value="i5">i5 Index</option>
+          <option value="trim">Adapter Trimming</option>
+          <option value="primer">PCR Primer</option>
+          <option value="transposase">Transposase</option>
+        </select>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table" id="adapter-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Kit / Category</th>
+              <th>Type</th>
+              <th>Sequence (5'→3')</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="adapter-tbody"></tbody>
+        </table>
+      </div>
+      <div id="adapter-count" style="font-size:12px;color:var(--text-dim);margin-top:0.5rem;font-family:var(--mono);"></div>
+    </div>
+
+    <!-- ===== CUSTOM INDEXES ===== -->
+    <div class="page-section" id="s-custom">
+      <h1>Lab Custom Index Registry</h1>
+      <p class="page-subtitle">Shared index registry synced to GitHub — all lab members see the same data</p>
+
+      <div class="callout green">
+        <div class="callout-title">GitHub Sync</div>
+        <p>Indexes are stored in <code>lab_indexes.json</code> in the <strong>ODonnellLab / lab-sequencing-tools</strong> private GitHub repo. Every add/delete creates a timestamped commit — full history is viewable at <a href="https://github.com/mikeod38/lab-sequencing-tools/commits/main" target="_blank" style="color:var(--accent)">github.com/mikeod38/lab-sequencing-tools</a>.</p>
+      </div>
+
+      <div class="designer-card" style="margin-bottom:1.5rem;">
+        <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;">
+          <span id="gh-spinner" style="display:none;color:var(--accent);font-family:var(--mono);font-size:12px;">⟳ working…</span>
+          <span id="gh-config-status"></span>
+        </div>
+        <div id="gh-status" style="margin-top:0.5rem;"></div>
+      </div>
+
+      <h2>Conflict Checker</h2>
+      <div class="designer-card">
+        <h3>Check a Sequence</h3>
+        <div style="display:flex;gap:0.75rem;align-items:flex-end;flex-wrap:wrap;">
+          <div class="input-group" style="margin:0;flex:1;min-width:200px;">
+            <label class="input-label">Index Sequence to Test (6-10 bp)</label>
+            <input class="dna-input" id="check-seq" placeholder="e.g. ACGTAG" oninput="checkIndex()">
+          </div>
+          <div class="input-group" style="margin:0;">
+            <label class="input-label">Min Hamming Distance</label>
+            <select class="filter-select" id="hamming-thresh" style="height:38px;" onchange="checkIndex()">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3" selected>3</option>
+              <option value="4">4</option>
+            </select>
+          </div>
+        </div>
+        <div id="check-results" style="margin-top:1rem;"></div>
+      </div>
+
+      <h2>Lab Index Registry <span id="lab-count" class="count-badge">0 indexes</span></h2>
+
+      <div class="filter-bar">
+        <input class="filter-input" id="lab-search" placeholder="Search indexes..." oninput="filterLabIndexes()" style="width:200px;">
+        <button class="btn btn-outline" onclick="loadLabIndexes()" style="padding:0.4rem 0.9rem;font-size:12px;">⟳ Refresh</button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Index Name</th>
+              <th>Sequence (5'→3')</th>
+              <th>Length</th>
+              <th>GC%</th>
+              <th>Status</th>
+              <th>Notes</th>
+              <th>Added by · Date</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="lab-tbody"></tbody>
+        </table>
+      </div>
+
+      <h3>Add New Index</h3>
+      <div class="designer-card">
+        <div id="user-bar" style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;padding-bottom:0.75rem;border-bottom:1px solid var(--border2);flex-wrap:wrap;">
+          <span style="font-family:var(--mono);font-size:12px;color:var(--text-muted);">Adding as:</span>
+          <span id="user-display" style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent2);"></span>
+          <button class="btn btn-outline" style="padding:0.2rem 0.6rem;font-size:11px;" onclick="changeName()">Change name</button>
+        </div>
+        <div id="name-prompt" style="display:none;margin-bottom:1rem;padding-bottom:0.75rem;border-bottom:1px solid var(--border2);">
+          <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+            <label class="input-label" style="margin:0;white-space:nowrap;">Your name (required to add indexes):</label>
+            <input class="dna-input" id="user-name-input" placeholder="e.g. Mike O'Donnell" style="width:220px;color:var(--text);" onkeydown="if(event.key==='Enter')saveName()">
+            <button class="btn btn-green" style="padding:0.4rem 0.8rem;" onclick="saveName()">Save</button>
+          </div>
+          <div id="name-msg" style="font-family:var(--mono);font-size:12px;margin-top:0.4rem;"></div>
+        </div>
+        <div class="add-row">
+          <input id="new-idx-name" placeholder="Name (e.g. LAB001)" style="width:140px;">
+          <input id="new-idx-seq" placeholder="Sequence (6-10 bp)" style="width:180px;" oninput="this.value=this.value.toUpperCase()">
+          <input id="new-idx-note" placeholder="Notes (optional)" style="width:220px;flex:1;">
+          <button class="btn btn-green" onclick="addLabIndex()">+ Add &amp; Save</button>
+        </div>
+        <div id="add-msg" style="margin-top:0.5rem;font-size:12px;font-family:var(--mono);"></div>
+      </div>
+
+      <div style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap;">
+        <button class="btn btn-outline" onclick="exportIndexes()">Export CSV</button>
+        <button class="btn btn-outline" style="border-color:var(--accent3);color:var(--accent3);" onclick="clearLabIndexes()">🔒 Clear All &amp; Archive</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ======== DATA ========
+
+const ILLUMINA_ADAPTERS = [
+  // Trimming
+  {name:"Nextera/Illumina Prep R1+R2 Trim",kit:"nextera",type:"trim",seq:"CTGTCTCTTATACACATCT",notes:"Read 1 & 2 trimming"},
+  {name:"Illumina DNA PCR-Free Tagmentation Trim",kit:"nextera",type:"trim",seq:"CTGTCTCTTATACACATCT+ATGTGTATAAGAGACA",notes:"Two adapters, independently assessed"},
+  {name:"Nextera Mate Pair Trim",kit:"nextera",type:"trim",seq:"CTGTCTCTTATACACATCT+AGATGTGTATAAGAGACAG",notes:""},
+  {name:"Truseq Read 1 Trim",kit:"truseq",type:"trim",seq:"AGATCGGAAGAGCACACGTCTGAACTCCAGTCA",notes:""},
+  {name:"Truseq Read 2 Trim",kit:"truseq",type:"trim",seq:"AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT",notes:""},
+  {name:"TruSeq Small RNA Trim",kit:"truseq",type:"trim",seq:"TGGAATTCTCGGGTGCCAAGG",notes:""},
+  // Nextera transposase
+  {name:"Nextera Transposase Read 1",kit:"nextera",type:"transposase",seq:"TCGTCGGCAGCGTCAGATGTGTATAAGAGACAG",notes:""},
+  {name:"Nextera Transposase Read 2",kit:"nextera",type:"transposase",seq:"GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAG",notes:""},
+  // Nextera PCR
+  {name:"Nextera Index 1 Read PCR",kit:"nextera",type:"primer",seq:"CAAGCAGAAGACGGCATACGAGAT[i7]GTCTCGTGGGCTCGG",notes:"i7 placeholder"},
+  {name:"Nextera Index 2 Read PCR",kit:"nextera",type:"primer",seq:"AATGATACGGCGACCACCGAGATCTACAC[i5]TCGTCGGCAGCGTC",notes:"i5 placeholder"},
+  // Flow cell anchors
+  {name:"P5 Adaptor",kit:"nextera",type:"primer",seq:"AATGATACGGCGACCACCGAGATCTACAC",notes:"Flow cell binding"},
+  {name:"P7 Adaptor",kit:"nextera",type:"primer",seq:"CAAGCAGAAGACGGCATACGAGAT",notes:"Flow cell binding"},
+  // Nextera DNA i7 indexes
+  ...[
+    ["[H/N]701","TAAGGCGA"],["[H/N]702","CGTACTAG"],["[H/N]703","AGGCAGAA"],["[H/N]704","TCCTGAGC"],
+    ["[H/N]705","GGACTCCT"],["[H/N]706","TAGGCATG"],["[H/N]707","CTCTCTAC"],["[H/N]708","CAGAGAGG"],
+    ["[H/N]709","GCTACGCT"],["[H/N]710","CGAGGCTG"],["[H/N]711","AAGAGGCA"],["[H/N]712","GTAGAGGA"],
+    ["[H/N]714","TCATGAGC"],["[H/N]715","CCTGAGAT"],["[H/N]716","TAGCGAGT"],["[H/N]718","GGAGCTAC"],
+    ["[H/N]719","TACTACGC"],["[H/N]720","AGGCTCCG"],["[H/N]721","GCAGCGTA"],["[H/N]722","CTGCGCAT"],
+    ["[H/N]723","GAGCGCTA"],["[H/N]724","CGCTCAGT"],["[H/N]726","GTCTTAGG"],["[H/N]727","ACTGATCG"],
+    ["[H/N]728","TAGCTGCA"],["[H/N]729","GACGTCGA"]
+  ].map(([n,s])=>({name:n,kit:"nextera",type:"i7",seq:s,notes:"Nextera DNA i7"})),
+  // Nextera DNA i5 indexes
+  ...[
+    ["[E/H/N/S]501","TAGATCGC"],["[E/H/N/S]502","CTCTCTAT"],["[E/H/N/S]503","TATCCTCT"],
+    ["[E/H/N/S]504","AGAGTAGA"],["[E/H/N/S]505","GTAAGGAG"],["[E/H/N/S]506","ACTGCATA"],
+    ["[E/H/N/S]507","AAGGAGTA"],["[E/H/N/S]508","CTAAGCCT"],["[E/H/N/S]510","CGTCTAAT"],
+    ["[E/H/N/S]511","TCTCTCCG"],["[E/H/N/S]513","TCGACTAG"],["[E/H/N/S]515","TTCTAGCT"],
+    ["[E/H/N/S]516","CCTAGAGT"],["[E/H/N/S]517","GCGTAAGA"],["[E/H/N/S]518","CTATTAAG"],
+    ["[E/H/N/S]520","AAGGCTAT"],["[E/H/N/S]521","GAGCCTTA"],["[E/H/N/S]522","TTATGCGA"]
+  ].map(([n,s])=>({name:n,kit:"nextera",type:"i5",seq:s,notes:"Nextera DNA i5 (forward)"})),
+  // TruSeq CD i7
+  ...[
+    ["D701","ATTACTCG"],["D702","TCCGGAGA"],["D703","CGCTCATT"],["D704","GAGATTCC"],
+    ["D705","ATTCAGAA"],["D706","GAATTCGT"],["D707","CTGAAGCT"],["D708","TAATGCGC"],
+    ["D709","CGGCTATG"],["D710","TCCGCGAA"],["D711","TCTCGCGC"],["D712","AGCGATAG"]
+  ].map(([n,s])=>({name:n,kit:"truseq",type:"i7",seq:s,notes:"TruSeq CD / UD i7"})),
+  // TruSeq CD i5
+  ...[
+    ["D501","TATAGCCT"],["D502","ATAGAGGC"],["D503","CCTATCCT"],["D504","GGCTCTGA"],
+    ["D505","AGGCGAAG"],["D506","TAATCTTA"],["D507","CAGGACGT"],["D508","GTACTGAC"]
+  ].map(([n,s])=>({name:n,kit:"truseq",type:"i5",seq:s,notes:"TruSeq CD i5 (forward)"})),
+  // TruSeq Amplicon A7xx i7
+  ...[
+    ["A701","ATCACGAC"],["A702","ACAGTGGT"],["A703","CAGATCCA"],["A704","ACAAACGG"],
+    ["A705","ACCCAGCA"],["A706","AACCCCTC"],["A707","CCCAACCT"],["A708","CACCACAC"],
+    ["A709","GAAACCCA"],["A710","TGTGACCA"],["A711","AGGGTCAA"],["A712","AGGAGTGG"]
+  ].map(([n,s])=>({name:n,kit:"truseq",type:"i7",seq:s,notes:"TruSeq Amplicon / TruSight i7"})),
+  // TruSeq Amplicon A5xx i5
+  ...[
+    ["A501","TGAACCTT"],["A502","TGCTAAGT"],["A503","TGTTCTCT"],["A504","TAAGACAC"],
+    ["A505","CTAATCGA"],["A506","CTAGAACA"],["A507","TAAGTTCC"],["A508","TAGACCTA"]
+  ].map(([n,s])=>({name:n,kit:"truseq",type:"i5",seq:s,notes:"TruSeq Amplicon i5 (forward)"})),
+  // TruSight DNA Enrichment N7xx i7
+  ...[
+    ["N701","TAAGGCGA"],["N702","CGTACTAG"],["N703","AGGCAGAA"],["N704","TCCTGAGC"],
+    ["N705","GGACTCCT"],["N706","TAGGCATG"],["N707","CTCTCTAC"],["N708","CAGAGAGG"],
+    ["N709","GCTACGCT"],["N710","CGAGGCTG"],["N711","AAGAGGCA"],["N712","GTAGAGGA"]
+  ].map(([n,s])=>({name:n,kit:"trusight",type:"i7",seq:s,notes:"TruSight DNA Enrichment i7"})),
+  // TruSight E5xx i5
+  ...[
+    ["E501","TAGATCGC"],["E502","CTCTCTAT"],["E503","TATCCTCT"],["E504","AGAGTAGA"],
+    ["E505","GTAAGGAG"],["E506","ACTGCATA"],["E507","AAGGAGTA"],["E508","CTAAGCCT"],["E517","GCGTAAGA"]
+  ].map(([n,s])=>({name:n,kit:"trusight",type:"i5",seq:s,notes:"TruSight DNA Enrichment i5"})),
+  // AmpliSeq i7
+  ...[
+    ["Q7005","GTGAATAT"],["Q7006","ACAGGCGC"],["Q7007","CATAGAGT"],["Q7008","TGCGAGAC"],
+    ["Q7015","TCTCTACT"],["Q7016","CTCTCGTC"],["Q7017","CCAAGTCT"],["Q7018","TTGGACTC"],
+    ["Q7023","GCAGAATT"],["Q7024","ATGAGGCC"],["Q7025","ACTAAGAT"],["Q7026","GTCGGAGC"],
+    ["Q7027","AGCCTCAT"],["Q7028","GATTCTGC"],["Q7029","TCGTAGTG"],["Q7030","CTACGACA"],
+    ["Q7035","ATGGCATG"],["Q7036","GCAATGCA"],["Q7039","CTTATCGG"],["Q7040","TCCGCTAA"],
+    ["Q7041","GATCTATC"],["Q7042","AGCTCGCT"],["Q7047","ACACTAAG"],["Q7048","GTGTCGGA"]
+  ].map(([n,s])=>({name:n,kit:"ampli",type:"i7",seq:s,notes:"AmpliSeq i7"})),
+  // AmpliSeq i5
+  ...[
+    ["Q5001","AGCGCTAG"],["Q5002","GATATCGA"],["Q5003","CGCAGACG"],["Q5004","TATGAGTA"],
+    ["Q5007","ACATAGCG"],["Q5008","GTGCGATA"],["Q5009","CCAACAGA"],["Q5010","TTGGTGAG"],
+    ["Q5013","AACCGCGG"],["Q5014","GGTTATAA"],["Q5017","CTAGCTTG"],["Q5018","TCGATCCA"],
+    ["Q5025","ATACCAAG"],["Q5026","GCGTTGGA"],["Q5027","CTTCACGG"],["Q5028","TCCTGTAA"],
+    ["Q5029","CCTCGGTA"],["Q5030","TTCTAACG"],["Q5031","CGCTCGTG"],["Q5032","TATCTACA"],
+    ["Q5035","CATTGTTG"],["Q5036","TGCCACCA"],["Q5039","ACGCCGCA"],["Q5040","GTATTATG"]
+  ].map(([n,s])=>({name:n,kit:"ampli",type:"i5",seq:s,notes:"AmpliSeq i5 (forward)"})),
+  // TruSeq Small RNA
+  {name:"TruSeq RNA RA5",kit:"truseq",type:"primer",seq:"GUUCAGAGUUCUACAGUCCGACGAUC",notes:"RNA 5' adapter"},
+  {name:"TruSeq RNA RA3",kit:"truseq",type:"primer",seq:"TGGAATTCTCGGGTGCCAAGG",notes:"RNA 3' adapter"},
+  {name:"TruSeq RNA RTP",kit:"truseq",type:"primer",seq:"GCCTTGGCACCCGAGAATTCCA",notes:"RNA RT primer"},
+  {name:"TruSeq RNA RP1",kit:"truseq",type:"primer",seq:"AATGATACGGCGACCACCGAGATCTACACGTTCAGAGTTCTACAGTCCGA",notes:"RNA PCR Primer 1"},
+  // TruSeq UD i7
+  ...[
+    ["UDI0001","CCGCGGTT"],["UDI0002","TTATAACC"],["UDI0003","GGACTTGG"],["UDI0004","AAGTCCAA"],
+    ["UDI0005","ATCCACTG"],["UDI0006","GCTTGTCA"],["UDI0007","CAAGCTAG"],["UDI0008","TGGATCGA"],
+    ["UDI0009","AGTTCAGG"],["UDI0010","GACCTGAA"],["UDI0011","TCTCTACT"],["UDI0012","CTCTCGTC"],
+    ["UDI0013","CCAAGTCT"],["UDI0014","TTGGACTC"],["UDI0025","ACTAAGAT"],["UDI0026","GTCGGAGC"],
+    ["UDI0027","CTTGGTAT"],["UDI0028","TCCAACGC"],["UDI0029","CCGTGAAG"],["UDI0030","TTACAGGA"]
+  ].map(([n,s])=>({name:n,kit:"truseq",type:"i7",seq:s,notes:"TruSeq UD i7"})),
+  // TruSeq UD i5
+  ...[
+    ["UDI0001-i5","CTAGCGCT"],["UDI0002-i5","TCGATATC"],["UDI0003-i5","CGTCTGCG"],["UDI0004-i5","TACTCATA"],
+    ["UDI0005-i5","ACGCACCT"],["UDI0006-i5","GTATGTTC"],["UDI0007-i5","CGCTATGT"],["UDI0008-i5","TATCGCAC"],
+    ["UDI0009-i5","TCTGTTGG"],["UDI0010-i5","CTCACCAA"],["UDI0025-i5","CCGCGGTT"],["UDI0026-i5","TTATAACC"],
+    ["UDI0027-i5","GGACTTGG"],["UDI0028-i5","AAGTCCAA"],["UDI0029-i5","ATCCACTG"],["UDI0030-i5","GCTTGTCA"]
+  ].map(([n,s])=>({name:n,kit:"truseq",type:"i5",seq:s,notes:"TruSeq UD i5 (forward)"})),
+  // TruSeq Single Index (R7xx)
+  ...[
+    ["R701","ATCACG"],["R702","CGATGT"],["R703","TTAGGC"],["R704","TGACCA"],["R705","ACAGTG"],
+    ["R706","GCCAAT"],["R707","CAGATC"],["R708","ACTTGA"],["R709","GATCAG"],["R711","GGCTAC"],["R712","CTTGTA"]
+  ].map(([n,s])=>({name:n,kit:"truseq",type:"i7",seq:s,notes:"TruSeq / TruSight Tumor 15 6-mer i7"})),
+  // TruSeq Small RNA RPI
+  ...[
+    ["RPI1","ATCACG"],["RPI2","CGATGT"],["RPI3","TTAGGC"],["RPI4","TGACCA"],["RPI5","ACAGTG"],
+    ["RPI6","GCCAAT"],["RPI7","CAGATC"],["RPI8","ACTTGA"],["RPI9","GATCAG"],["RPI10","TAGCTT"],
+    ["RPI11","GGCTAC"],["RPI12","CTTGTA"],["RPI13","AGTCAA"],["RPI14","AGTTCC"],["RPI15","ATGTCA"],
+    ["RPI16","CCGTCC"],["RPI17","GTAGAG"],["RPI18","GCGGAC"],["RPI19","TTTCAC"],["RPI20","GGCCAC"],
+    ["RPI21","CGAAAC"],["RPI22","CGTACG"],["RPI23","CCACTC"],["RPI24","GCTACC"],["RPI25","ATCAGT"],
+    ["RPI26","GCTCAT"],["RPI27","AGGAAT"],["RPI28","CTTTTG"],["RPI29","TAGTTG"],["RPI30","CCGGTG"],
+    ["RPI31","ATCGTG"],["RPI32","TGAGTG"],["RPI33","CGCCTG"],["RPI34","GCCATG"],["RPI35","AAAATG"],
+    ["RPI36","TGTTGG"],["RPI37","ATTCCG"],["RPI38","AGCTAG"],["RPI39","GTATAG"],["RPI40","TCTGAG"],
+    ["RPI41","GTCGTC"],["RPI42","CGATTA"],["RPI43","GCTGTA"],["RPI44","ATTATA"],["RPI45","GAATGA"],
+    ["RPI46","TCGGGA"],["RPI47","CTTCGA"],["RPI48","TGCCGA"]
+  ].map(([n,s])=>({name:n,kit:"truseq",type:"i7",seq:s,notes:"TruSeq Small RNA index"})),
+];
+
+// Collect all index sequences for conflict checking
+const ALL_ILLUMINA_SEQS = ILLUMINA_ADAPTERS
+  .filter(a => a.type === 'i7' || a.type === 'i5')
+  .map(a => ({name: a.name, seq: a.seq.toUpperCase()}));
+
+// ======== NAV ========
+function showSection(id, el) {
+  document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+  document.getElementById('s-' + id).classList.add('active');
+  document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+  if (el) el.classList.add('active');
+  else {
+    const idx = ['overview','library','amplicon','adapters','custom'].indexOf(id);
+    document.querySelectorAll('nav a')[idx]?.classList.add('active');
+  }
+  document.querySelectorAll('.sidebar-link').forEach(a => a.classList.remove('active'));
+}
+
+function scrollTo(id) {
+  setTimeout(() => document.getElementById(id)?.scrollIntoView({behavior:'smooth'}), 50);
+}
+
+// ======== TABS ========
+function switchTab(group, id, el) {
+  document.querySelectorAll(`[id^="${group}-"]`).forEach(p => p.classList.remove('active'));
+  document.getElementById(`${group}-${id}`)?.classList.add('active');
+  if (el) {
+    el.closest('.tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+  }
+}
+
+// ======== PRIMER BUILDER ========
+function rc(seq) {
+  return seq.toUpperCase().split('').reverse().map(b => ({A:'T',T:'A',G:'C',C:'G',N:'N'}[b]||b)).join('');
+}
+
+function buildPrimers() {
+  const fwdGSP = document.getElementById('fwd-gsp').value.trim().toUpperCase();
+  const fwdIdx = document.getElementById('fwd-idx').value.trim().toUpperCase();
+  const revGSP = document.getElementById('rev-gsp').value.trim().toUpperCase();
+  const revIdx = document.getElementById('rev-idx').value.trim().toUpperCase();
+
+  if (!fwdGSP && !revGSP) {
+    document.getElementById('primer-results').style.display = 'none';
+    return;
+  }
+
+  const R1 = 'TCCCTACACGACGCTCTTCCGATCT';
+  const R2 = 'GTTCAGACGTGTGCTCTTCCGATCT';
+
+  let fwdOut = '', revOut = '';
+
+  if (fwdGSP) {
+    const fwd = R1 + (fwdIdx ? fwdIdx + '-' : '') + fwdGSP;
+    fwdOut = `<div class="result-label">Forward Primer (→ R1-based)</div>`
+      + `<span style="color:var(--r1-color)">${R1}</span>`
+      + (fwdIdx ? `<span style="color:var(--index-color)">-${fwdIdx}</span>` : '')
+      + `-<span style="color:var(--s-gs, #e3b341)">${fwdGSP}</span>`
+      + `\n<span style="color:var(--text-dim)">Total length: ${fwd.length} bp</span>`;
+  }
+
+  if (revGSP) {
+    const revRC = rc(revGSP);
+    const rev = R2 + (revIdx ? revIdx + '-' : '') + revRC;
+    revOut = `<div class="result-label">Reverse Primer (→ R2-based, GSP reverse complemented)</div>`
+      + `<span style="color:var(--r2-color)">${R2}</span>`
+      + (revIdx ? `<span style="color:var(--index-color)">-${revIdx}</span>` : '')
+      + `-<span style="color:#e3b341">${revRC}</span>`
+      + `\n<span style="color:var(--text-dim)">RC of your input. Total length: ${rev.length} bp</span>`;
+  }
+
+  document.getElementById('fwd-primer-out').innerHTML = fwdOut;
+  document.getElementById('rev-primer-out').innerHTML = revOut;
+
+  let stats = '<div class="result-label">Notes</div>';
+  if (fwdIdx) {
+    const conflicts = checkSeqConflicts(fwdIdx);
+    stats += `<span>Fwd index: ${conflicts.length === 0 ? '<span style="color:var(--accent2)">✓ No Illumina conflicts found</span>' : `<span style="color:var(--accent3)">⚠ ${conflicts.length} potential conflict(s): ${conflicts.map(c=>c.name).join(', ')}</span>`}</span>\n`;
+  }
+  if (revIdx) {
+    const conflicts = checkSeqConflicts(revIdx);
+    stats += `<span>Rev index: ${conflicts.length === 0 ? '<span style="color:var(--accent2)">✓ No Illumina conflicts found</span>' : `<span style="color:var(--accent3)">⚠ ${conflicts.length} potential conflict(s): ${conflicts.map(c=>c.name).join(', ')}</span>`}</span>`;
+  }
+  document.getElementById('primer-stats').innerHTML = stats;
+  document.getElementById('primer-results').style.display = 'block';
+}
+
+// ======== ADAPTER TABLE ========
+function renderAdapterTable(data) {
+  const tbody = document.getElementById('adapter-tbody');
+  const kitLabels = {nextera:'Nextera/Prep',truseq:'TruSeq',ampli:'AmpliSeq',trusight:'TruSight'};
+  const typeLabels = {i7:'i7 Index',i5:'i5 Index',trim:'Trimming',primer:'PCR Primer',transposase:'Transposase'};
+  const typeBadges = {i7:'badge-orange',i5:'badge-purple',trim:'badge-green',primer:'badge-blue',transposase:'badge-orange'};
+
+  tbody.innerHTML = data.map(a => `
+    <tr>
+      <td class="name-cell">${a.name}</td>
+      <td>${kitLabels[a.kit]||a.kit}</td>
+      <td><span class="badge ${typeBadges[a.type]||'badge-blue'}">${typeLabels[a.type]||a.type}</span></td>
+      <td class="seq-cell">${a.seq}</td>
+      <td style="color:var(--text-dim);font-size:11px;">${a.notes}</td>
+    </tr>
+  `).join('');
+  document.getElementById('adapter-count').textContent = `Showing ${data.length} of ${ILLUMINA_ADAPTERS.length} entries`;
+}
+
+function filterAdapters() {
+  const q = document.getElementById('adapter-search').value.trim().toUpperCase();
+  const kit = document.getElementById('adapter-kit').value;
+  const type = document.getElementById('adapter-type').value;
+
+  let data = ILLUMINA_ADAPTERS.filter(a => {
+    const matchQ = !q || a.name.toUpperCase().includes(q) || a.seq.toUpperCase().includes(q) || a.notes.toUpperCase().includes(q);
+    const matchKit = !kit || a.kit === kit;
+    const matchType = !type || a.type === type;
+    return matchQ && matchKit && matchType;
+  });
+  renderAdapterTable(data);
+}
+
+// ======== HAMMING DISTANCE ========
+function hamming(a, b) {
+  if (a.length !== b.length) {
+    const minLen = Math.min(a.length, b.length);
+    let d = Math.abs(a.length - b.length);
+    for (let i = 0; i < minLen; i++) if (a[i] !== b[i]) d++;
+    return d;
+  }
+  let d = 0;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++;
+  return d;
+}
+
+function checkSeqConflicts(seq, thresh=1) {
+  const s = seq.toUpperCase();
+  return ALL_ILLUMINA_SEQS.filter(a => {
+    const as = a.seq.toUpperCase();
+    // Check exact or substring match
+    if (as.includes(s) || s.includes(as)) return true;
+    // Check hamming for same length
+    if (as.length === s.length && hamming(as, s) < thresh) return true;
+    return false;
+  });
+}
+
+function checkIndex() {
+  const seq = document.getElementById('check-seq').value.trim().toUpperCase();
+  const thresh = parseInt(document.getElementById('hamming-thresh').value);
+  const out = document.getElementById('check-results');
+
+  if (!seq) { out.innerHTML = ''; return; }
+  if (!/^[ACGTN]+$/.test(seq)) {
+    out.innerHTML = '<span style="color:var(--accent3);font-family:var(--mono);font-size:13px;">⚠ Invalid characters. Use A, C, G, T only.</span>';
+    return;
+  }
+
+  // Check GC
+  const gc = (seq.split('').filter(b=>b==='G'||b==='C').length / seq.length * 100).toFixed(0);
+  // Check homopolymer
+  const hasHomopoly = /(.)\1{2}/.test(seq);
+  // Check Illumina conflicts
+  const illConflicts = checkSeqConflicts(seq, thresh);
+  // Check lab index conflicts
+  const labIdxs = getCached();
+  const labConflicts = labIdxs.filter(l => {
+    const ls = l.seq.toUpperCase();
+    if (ls === seq) return true;
+    if (ls.length === seq.length && hamming(ls, seq) < thresh) return true;
+    return false;
+  });
+
+  let html = `<div class="result-box">`;
+  html += `<div class="result-label">Analysis for: <span style="color:var(--accent2)">${seq}</span> (${seq.length} bp)</div>`;
+  html += `<span>GC content: <strong style="color:${(gc>=40&&gc<=60)?'var(--accent2)':'var(--accent3)'}">${gc}%</strong> ${(gc>=40&&gc<=60)?'✓ OK':'⚠ Outside 40-60%'}</span>\n`;
+  html += `<span>Homopolymer: ${hasHomopoly ? '<span style="color:var(--accent3)">⚠ Contains run of 3+</span>' : '<span style="color:var(--accent2)">✓ OK</span>'}</span>\n`;
+  html += `<span>Illumina DB conflicts (HD &lt; ${thresh}): ${illConflicts.length === 0 ? '<span style="color:var(--accent2)">✓ None found</span>' : `<span style="color:var(--accent3)">⚠ ${illConflicts.length} found: ${illConflicts.slice(0,5).map(c=>c.name).join(', ')}${illConflicts.length>5?'...':''}</span>`}</span>\n`;
+  html += `<span>Lab index conflicts: ${labConflicts.length === 0 ? '<span style="color:var(--accent2)">✓ None found</span>' : `<span style="color:var(--accent3)">⚠ Conflicts: ${labConflicts.map(c=>c.name).join(', ')}</span>`}</span>`;
+  html += `</div>`;
+  out.innerHTML = html;
+}
+
+
+  // ======== GITHUB PROXY CONFIG ========
+  // All GitHub calls go through /.netlify/functions/github — no token in this file.
+  // Set these environment variables in the Netlify dashboard:
+  //   GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO, ADMIN_PASSWORD
+  const PROXY = '/.netlify/functions/github';
+
+  // Custom error for expired / invalid token
+  class TokenExpiredError extends Error {
+    constructor() { super('token_expired'); this.isTokenExpired = true; }
+  }
+
+  async function ghFetch() {
+    const r = await fetch(`${PROXY}?action=read&db=indexes&_=${Date.now()}`);
+    if (r.status === 401) throw new TokenExpiredError();
+    if (!r.ok) throw new Error(`Proxy read ${r.status}`);
+    const j = await r.json();
+    if (j.error === 'token_expired') throw new TokenExpiredError();
+    if (j.error) throw new Error(j.error);
+    return { data: j.data, sha: j.sha };
+  }
+
+  function tokenExpiredMessage() {
+    return `<div class="callout red" style="margin:0;">
+      <div class="callout-title">🔑 GitHub Token Expired or Invalid</div>
+      <p>The lab access token needs to be renewed. To fix this (admin only):</p>
+      <ol style="color:var(--text-muted);font-size:13px;line-height:2;padding-left:1.5rem;margin-top:0.5rem;">
+        <li>Go to <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--accent)">github.com/settings/tokens</a> and sign in as <strong style="color:var(--text)">mikeod38</strong></li>
+        <li>Click <strong>Generate new token (classic)</strong>, set expiry, check <strong>repo</strong> scope, copy the new token</li>
+        <li>Go to <a href="https://app.netlify.com" target="_blank" style="color:var(--accent)">app.netlify.com</a> → your site → <strong>Site configuration → Environment variables</strong></li>
+        <li>Find <code>GITHUB_TOKEN</code> and update its value with the new token</li>
+        <li>Trigger a redeploy: Netlify dashboard → <strong>Deploys → Trigger deploy</strong></li>
+      </ol>
+      <p style="margin-top:0.75rem;font-size:12px;">No changes to the HTML file or redistribution needed — the token lives only in Netlify.</p>
+    </div>`;
+  }
+
+  async function ghPush(data, sha, message) {
+    const r = await fetch(PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'write', db: 'indexes', data, sha, message })
+    });
+    if (r.status === 401) throw new TokenExpiredError();
+    const j = await r.json();
+    if (j.error === 'token_expired') throw new TokenExpiredError();
+    if (j.error) throw new Error(j.error);
+    return j;
+  }
+
+  async function ghArchive(data, archivePath, message) {
+    const r = await fetch(PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'archive', db: 'indexes', data, archivePath, message })
+    });
+    const j = await r.json();
+    if (j.error) throw new Error(j.error);
+    return j;
+  }
+
+  async function checkAdminPassword(password) {
+    const r = await fetch(PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'checkPassword', password })
+    });
+    const j = await r.json();
+    return j.ok === true;
+  }
+
+  let _ghSha = null;
+
+  function setGhStatus(msg, color) {
+    const el = document.getElementById('gh-status');
+    if (el) el.innerHTML = `<span style="color:${color||'var(--text-muted)'};font-family:var(--mono);font-size:12px;">${msg}</span>`;
+  }
+  function showSpinner(v) { const el = document.getElementById('gh-spinner'); if (el) el.style.display = v ? 'inline' : 'none'; }
+
+  // ======== LAB INDEXES (GitHub backend + localStorage cache) ========
+  function getCached() { try { return JSON.parse(localStorage.getItem('lab_indexes_cache')||'[]'); } catch(e) { return []; } }
+  function setCache(d) { localStorage.setItem('lab_indexes_cache', JSON.stringify(d)); }
+
+  async function loadLabIndexes() {
+    setGhStatus('⟳ Syncing…', 'var(--accent)');
+    showSpinner(true);
+    try {
+      const { data, sha } = await ghFetch();
+      _ghSha = sha;
+      setCache(data);
+      renderLabTable(data);
+      setGhStatus(`✓ Synced — ${data.length} indexes`, 'var(--accent2)');
+    } catch(e) {
+      if (e.isTokenExpired) {
+        document.getElementById('gh-status').innerHTML = tokenExpiredMessage();
+        renderLabTable(getCached());
+      } else {
+        setGhStatus(`⚠ ${e.message} — using cached data`, 'var(--accent5)');
+        renderLabTable(getCached());
+      }
+    } finally { showSpinner(false); }
+  }
+
+  function renderLabTable(idxs) {
+    if (!idxs) idxs = getCached();
+    const tbody = document.getElementById('lab-tbody');
+    const q = (document.getElementById('lab-search')?.value||'').trim().toUpperCase();
+    const filtered = idxs.filter(i => !q || i.name.toUpperCase().includes(q) || i.seq.includes(q));
+    document.getElementById('lab-count').textContent = `${idxs.length} index${idxs.length!==1?'es':''}`;
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" style="color:var(--text-dim);text-align:center;padding:2rem;">${idxs.length===0?'No indexes yet — add one below.':'No matches.'}</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = filtered.map(idx => {
+      const gc = (idx.seq.split('').filter(b=>b==='G'||b==='C').length/idx.seq.length*100).toFixed(0);
+      const bad = checkSeqConflicts(idx.seq,3).length>0 || /(.)\1{2}/.test(idx.seq) || gc<40 || gc>60;
+      const addedBy = idx.addedBy||'—';
+      const addedAt = idx.addedAt ? new Date(idx.addedAt).toLocaleDateString() : '—';
+      return `<tr>
+        <td class="name-cell">${idx.name}</td>
+        <td class="seq-cell">${idx.seq}</td>
+        <td>${idx.seq.length}</td>
+        <td style="color:${(gc>=40&&gc<=60)?'var(--accent2)':'var(--accent3)'}">${gc}%</td>
+        <td>${bad?'<span class="badge badge-orange">⚠ Review</span>':'<span class="badge badge-green">✓ OK</span>'}</td>
+        <td style="color:var(--text-dim);font-size:11px;">${idx.notes||''}</td>
+        <td style="font-size:11px;color:var(--text-dim)">${addedBy} · ${addedAt}</td>
+        <td><button class="del-btn" title="Delete" onclick="deleteLabIndex('${idx.name}')">×</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function filterLabIndexes() { renderLabTable(); }
+
+  async function addLabIndex() {
+    const name  = document.getElementById('new-idx-name').value.trim();
+    const seq   = document.getElementById('new-idx-seq').value.trim().toUpperCase();
+    const notes = document.getElementById('new-idx-note').value.trim();
+    const msg   = document.getElementById('add-msg');
+    const addedBy = getLabUser();
+    if (!addedBy) { msg.innerHTML='<span style="color:var(--accent3)">⚠ Please enter your name above before adding indexes.</span>'; showNamePrompt(); return; }
+    if (!name||!seq)            { msg.innerHTML='<span style="color:var(--accent3)">Name and sequence required.</span>'; return; }
+    if (!/^[ACGT]+$/.test(seq)) { msg.innerHTML='<span style="color:var(--accent3)">Use only A, C, G, T.</span>'; return; }
+    if (seq.length<6||seq.length>10) { msg.innerHTML='<span style="color:var(--accent3)">Must be 6–10 bp.</span>'; return; }
+    if (!ghToken())             { msg.innerHTML='<span style="color:var(--accent3)">⚠ No GitHub token — configure it above.</span>'; return; }
+    msg.innerHTML='<span style="color:var(--accent)">Saving…</span>';
+    showSpinner(true);
+    try {
+      const { data: latest, sha } = await ghFetch();
+      _ghSha = sha;
+      if (latest.find(i=>i.name===name)) { msg.innerHTML='<span style="color:var(--accent3)">Name already exists.</span>'; return; }
+      if (latest.find(i=>i.seq===seq))   { msg.innerHTML='<span style="color:var(--accent3)">Sequence already registered.</span>'; return; }
+      const warns=[];
+      if (checkSeqConflicts(seq,3).length>0) warns.push('Illumina DB conflict');
+      if (/(.)\1{2}/.test(seq)) warns.push('Homopolymer ≥3');
+      const gc=seq.split('').filter(b=>b==='G'||b==='C').length/seq.length*100;
+      if (gc<40||gc>60) warns.push(`GC ${gc.toFixed(0)}%`);
+      latest.push({ name, seq, notes, addedAt: new Date().toISOString(), addedBy });
+      await ghPush(latest, _ghSha, `Add index ${name} (${seq}) by ${addedBy}`);
+      setCache(latest); renderLabTable(latest);
+      setGhStatus(`✓ Saved — ${latest.length} indexes`, 'var(--accent2)');
+      document.getElementById('new-idx-name').value='';
+      document.getElementById('new-idx-seq').value='';
+      document.getElementById('new-idx-note').value='';
+      msg.innerHTML = warns.length ? `<span style="color:var(--accent5)">⚠ Added with warnings: ${warns.join('; ')}</span>`
+                                   : `<span style="color:var(--accent2)">✓ ${name} saved to GitHub.</span>`;
+    } catch(e) {
+      if (e.isTokenExpired) { document.getElementById('gh-status').innerHTML = tokenExpiredMessage(); showSection('custom',null); }
+      else msg.innerHTML=`<span style="color:var(--accent3)">Error: ${e.message}</span>`;
+    } finally { showSpinner(false); setTimeout(()=>msg.innerHTML='',5000); }
+  }
+
+  async function deleteLabIndex(name) {
+    if (!confirm(`Delete "${name}" from GitHub?`)) return;
+    if (!ghToken()) { alert('No token set.'); return; }
+    showSpinner(true); setGhStatus('Deleting…','var(--accent)');
+    try {
+      const { data, sha } = await ghFetch();
+      const updated = data.filter(i=>i.name!==name);
+      await ghPush(updated, sha, `Remove index ${name}`);
+      setCache(updated); renderLabTable(updated);
+      setGhStatus(`✓ Deleted — ${updated.length} indexes`,'var(--accent2)');
+    } catch(e) { setGhStatus(`⚠ ${e.message}`,'var(--accent3)'); }
+    finally { showSpinner(false); }
+  }
+
+  async function clearLabIndexes() {
+    // Step 1: password check via server — password never stored in this file
+    const pwd = prompt('Enter admin password to clear all indexes:');
+    if (pwd === null) return;
+    showSpinner(true);
+    setGhStatus('Checking password…', 'var(--accent)');
+    const ok = await checkAdminPassword(pwd).catch(() => false);
+    if (!ok) {
+      showSpinner(false);
+      setGhStatus('Incorrect password.', 'var(--accent3)');
+      setTimeout(() => setGhStatus('', ''), 3000);
+      return;
+    }
+    // Step 2: final confirm
+    if (!confirm('This will archive the current database then clear all indexes. Continue?')) {
+      showSpinner(false); return;
+    }
+    setGhStatus('Archiving and clearing…', 'var(--accent)');
+    try {
+      const { data: latest, sha } = await ghFetch();
+      if (latest.length === 0) {
+        setGhStatus('Nothing to clear — registry is already empty.', 'var(--text-muted)');
+        return;
+      }
+      // Step 3: archive via proxy
+      const timeStr = new Date().toISOString().slice(0,19).replace('T','_').replace(/:/g,'-');
+      const archivePath = `archives/lab_indexes_${timeStr}.json`;
+      await ghArchive(latest, archivePath, `Archive before clear (${timeStr})`);
+      // Step 4: clear
+      await ghPush([], sha, `Clear all lab indexes (archived to ${archivePath})`);
+      setCache([]);
+      renderLabTable([]);
+      setGhStatus(`✓ Cleared — ${latest.length} indexes archived to archives/`, 'var(--accent2)');
+    } catch(e) {
+      if (e.isTokenExpired) document.getElementById('gh-status').innerHTML = tokenExpiredMessage();
+      else setGhStatus(`⚠ ${e.message}`, 'var(--accent3)');
+    } finally { showSpinner(false); }
+  }
+
+  function exportIndexes() {
+    const d = getCached();
+    const csv = 'Name,Sequence,Length,GC%,Notes,AddedBy,AddedAt\n'
+      + d.map(i=>{const gc=(i.seq.split('').filter(b=>b==='G'||b==='C').length/i.seq.length*100).toFixed(0);
+          return `${i.name},${i.seq},${i.seq.length},${gc}%,"${i.notes||''}","${i.addedBy||''}","${i.addedAt||''}"`;}).join('\n');
+    const a=document.createElement('a'); a.href='data:text/csv,'+encodeURIComponent(csv); a.download='lab_indexes.csv'; a.click();
+  }
+
+  // ======== USER NAME MANAGEMENT ========
+  function getLabUser() { return localStorage.getItem('lab_user') || ''; }
+
+  function updateUserBar() {
+    const name = getLabUser();
+    const display = document.getElementById('user-display');
+    const prompt  = document.getElementById('name-prompt');
+    const bar     = document.getElementById('user-bar');
+    if (!display) return;
+    if (name) {
+      display.textContent = name;
+      if (prompt) prompt.style.display = 'none';
+      if (bar) bar.style.display = 'flex';
+    } else {
+      display.textContent = '(not set)';
+      display.style.color = 'var(--accent3)';
+      showNamePrompt();
+    }
+  }
+
+  function showNamePrompt() {
+    const p = document.getElementById('name-prompt');
+    if (p) { p.style.display = 'block'; document.getElementById('user-name-input')?.focus(); }
+  }
+
+  function saveName() {
+    const val = document.getElementById('user-name-input')?.value.trim();
+    const msg = document.getElementById('name-msg');
+    if (!val) { if (msg) msg.innerHTML = '<span style="color:var(--accent3)">Name cannot be empty.</span>'; return; }
+    localStorage.setItem('lab_user', val);
+    document.getElementById('user-name-input').value = '';
+    if (msg) msg.innerHTML = '';
+    updateUserBar();
+  }
+
+  function changeName() {
+    const p = document.getElementById('name-prompt');
+    if (p) p.style.display = p.style.display === 'none' ? 'block' : 'none';
+    document.getElementById('user-name-input')?.focus();
+  }
+
+  function updateGhStatusBar() {
+    const el = document.getElementById('gh-config-status');
+    if (el) el.innerHTML = `<span style="color:var(--accent2);font-family:var(--mono);font-size:12px;">✓ Connected via Netlify → lab-sequencing-tools</span>`;
+  }
+
+// ======== INIT ========
+document.addEventListener('DOMContentLoaded', () => {
+  renderAdapterTable(ILLUMINA_ADAPTERS);
+  updateGhStatusBar();
+  updateUserBar();
+  loadLabIndexes();
+});
+</script>
+</body>
+</html>
