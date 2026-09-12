@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bacteria Strains &amp; Biosafety — ODonnell Lab</title>
+<link rel="stylesheet" href="/shared.css">
+<style>
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 2rem 3rem 5rem; }
+  .hero { max-width: 1100px; margin: 0 auto; padding: 2.5rem 3rem 1rem; }
+  .hero h1 { margin: 0 0 .5rem; font-size: 28px; }
+  .hero-sub { color: var(--text-muted); font-size: 14px; margin: 0; max-width: 65ch; line-height: 1.6; }
+  .gate { max-width: 420px; margin: 4rem auto; background: var(--surface);
+          border: 1px solid var(--border); border-radius: 12px; padding: 2rem; }
+  .gate h2 { margin: 0 0 .5rem; font-size: 18px; }
+  .gate p { color: var(--text-muted); font-size: 13.5px; line-height: 1.6; margin: 0 0 1.25rem; }
+  .gate input { width: 100%; margin-bottom: .75rem; }
+  .gate .btn { width: 100%; justify-content: center; }
+  .gate-err { color: var(--accent3); font-size: 13px; min-height: 1.2em; margin-top: .6rem; }
+  .lock-icon { font-size: 28px; margin-bottom: .75rem; display: block; }
+  .tabs { display: flex; gap: .4rem; border-bottom: 1px solid var(--border);
+          margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .tab { font-family: var(--mono); font-size: 12.5px; background: none; border: none;
+         color: var(--text-dim); padding: .7rem 1rem; cursor: pointer;
+         border-bottom: 2px solid transparent; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .pill { font-family: var(--mono); font-size: 10.5px; padding: .2em .6em; border-radius: 999px;
+          border: 1px solid var(--border2); white-space: nowrap; display: inline-block; }
+  .pill.registered { background: rgba(63,185,80,.12); border-color: rgba(63,185,80,.45); color: #6fdc82; }
+  .pill.needs_registration { background: rgba(248,81,73,.12); border-color: rgba(248,81,73,.45); color: #ff8b84; }
+  .pill.rg1 { background: rgba(110,127,146,.12); color: var(--text-dim); }
+  .pill.unknown { background: rgba(240,136,62,.12); border-color: rgba(240,136,62,.45); color: #ffab6b; }
+  .pill.draft { background: rgba(240,136,62,.12); border-color: rgba(240,136,62,.45); color: #ffab6b; }
+  .pill.approved { background: rgba(74,158,255,.12); border-color: rgba(74,158,255,.45); color: #7fbcff; }
+  .toolbar { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+  .toolbar .filter-input { flex: 1; min-width: 200px; }
+  .count { font-family: var(--mono); font-size: 11.5px; color: var(--text-dim); }
+  .stat-row { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(150px,1fr));
+              margin-bottom: 1.25rem; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+          padding: .9rem 1rem; border-left: 3px solid var(--stat-accent, var(--accent)); }
+  .stat .n { font-family: var(--mono); font-size: 22px; color: var(--text); line-height: 1.1; }
+  .stat .l { font-size: 11.5px; color: var(--text-dim); margin-top: .25rem; }
+  td .sp { color: var(--text); font-style: italic; }
+  td .sid { font-family: var(--mono); font-size: 12.5px; color: var(--accent); }
+  .note-cell { font-size: 12.5px; color: var(--text-dim); max-width: 340px; }
+  .form-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit,minmax(230px,1fr));
+               margin-bottom: 1rem; }
+  .field label { display: block; font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+                 text-transform: uppercase; letter-spacing: .07em; margin-bottom: .35rem; }
+  .field input, .field select, .field textarea { width: 100%; }
+  .field textarea { min-height: 70px; font-family: var(--sans); font-size: 14px; }
+  .verdict { margin: 1rem 0; }
+  .reg-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+              padding: 1.1rem 1.3rem; margin-bottom: .85rem;
+              border-top: 3px solid var(--card-accent, var(--accent)); }
+  .reg-card h3 { margin: 0 0 .4rem; font-size: 15.5px; font-style: italic; }
+  .reg-card .meta { font-family: var(--mono); font-size: 11.5px; color: var(--text-dim); margin-bottom: .6rem; }
+  .reg-card details { margin-top: .6rem; }
+  .reg-card summary { cursor: pointer; font-size: 12.5px; color: var(--accent); }
+  .reg-card .ra { font-size: 13.5px; line-height: 1.65; color: var(--text-muted);
+                  margin-top: .6rem; max-width: 78ch; }
+  .deck-frame { width: 100%; height: 78vh; border: 1px solid var(--border); border-radius: 10px;
+                background: #0e1116; }
+  .msg { font-size: 13.5px; margin-top: .75rem; }
+  .msg.ok { color: var(--accent2); }
+  .msg.bad { color: var(--accent3); }
+  .btn-xs { font-size: 11px; padding: .25em .7em; }
+  tr.retired td { opacity: .5; }
+  @media (max-width: 600px) { .wrap, .hero { padding-left: 1.5rem; padding-right: 1.5rem; } }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="site-logo">&#11041; ODonnell Lab Wiki</a>
+  <nav class="site-nav">
+    <a href="/">Home</a>
+    <a href="/sequencing.html">Sequencing</a>
+    <a href="/bacteria.html" class="active">Bacteria Strains</a>
+  </nav>
+</header>
+
+<div id="gate" class="gate">
+  <span class="lock-icon">&#128274;</span>
+  <h2>Bacteria Strains &amp; Biosafety</h2>
+  <p>This page lists the lab's bacterial strains, their Connecticut pathogen
+     registrations, and BSL-2 training material. Ask the PI for the lab password.</p>
+  <input type="password" id="pw" class="filter-input" placeholder="Lab password" autocomplete="current-password">
+  <button class="btn" id="unlock">Unlock</button>
+  <div class="gate-err" id="gate-err"></div>
+</div>
+
+<div id="app" hidden>
+  <div class="hero">
+    <h1>Bacteria Strains &amp; Biosafety</h1>
+    <p class="hero-sub">Every strain in the lab, cross-checked against our EHS pathogen
+      registrations. Adding a strain whose species is a registered-pathogen candidate
+      automatically opens a registration request for the PI. Every add, edit and
+      retirement is logged and notified.</p>
+  </div>
+
+  <div class="wrap">
+    <div class="tabs">
+      <button class="tab active" data-panel="strains">Strains</button>
+      <button class="tab" data-panel="add">Add a strain</button>
+      <button class="tab" data-panel="regs">Registrations</button>
+      <button class="tab" data-panel="deck">BSL-2 training</button>
+    </div>
+
+    <section class="panel active" id="panel-strains">
+      <div class="stat-row" id="stats"></div>
+      <div class="toolbar">
+        <input class="filter-input" id="q" placeholder="Filter by strain ID, species, source or note...">
+        <select class="filter-select" id="fstatus">
+          <option value="">All statuses</option>
+          <option value="registered">Registered</option>
+          <option value="needs_registration">Needs registration</option>
+          <option value="unknown">Unidentified</option>
+          <option value="rg1">RG1 / no registration needed</option>
+        </select>
+        <select class="filter-select" id="fsheet"><option value="">All collections</option></select>
+        <span class="count" id="count"></span>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr>
+            <th>Strain</th><th>Species</th><th>Collection</th><th>Source</th>
+            <th>Status</th><th>Note</th><th></th>
+          </tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-add">
+      <div class="callout">
+        <p>Enter the strain and species. The page checks it against our registrations
+        and the human-pathogen watchlist before saving.</p>
+        <p><strong>New strains go into the lab collections</strong>, MOYb for isolates the
+        lab derives and External for anything obtained from ATCC, the CGC or another lab.
+        Personal collections are not an option here. If you keep your own stocks, tell the
+        PI and record the freezer location, so the lab can find and account for them.</p>
+        <p style="margin-bottom:0">You can add, edit and retire entries here.
+        Changes are written to a wiki-owned file that the build script merges on top of
+        the strain sheets, so an edit survives every rebuild and nothing is silently
+        overwritten. <strong>Every change notifies the PI</strong> and keeps a history
+        of who changed what.</p>
+      </div>
+      <h3 id="formtitle" style="font-size:15px;margin:0 0 1rem;color:var(--text)">Add a strain</h3>
+      <div class="form-grid">
+        <div class="field"><label for="a-id">Strain ID</label>
+          <input class="filter-input" id="a-id" placeholder="MOYb_140"></div>
+        <div class="field"><label for="a-sp">Genus and species</label>
+          <input class="filter-input" id="a-sp" placeholder="Klebsiella pneumoniae"></div>
+        <div class="field"><label for="a-src">Source</label>
+          <input class="filter-input" id="a-src" placeholder="ATCC, a named lab, or soil isolate"></div>
+        <div class="field"><label for="a-who">Your name</label>
+          <input class="filter-input" id="a-who" placeholder="Your name"></div>
+        <div class="field"><label for="a-sheet">Collection</label>
+          <select class="filter-select" id="a-sheet">
+            <option value="MOYb">MOYb (lab isolates)</option>
+            <option value="External">External (ATCC, CGC, gift strains)</option>
+          </select></div>
+        <div class="field"><label for="a-geno">Genotype or marker</label>
+          <input class="filter-input" id="a-geno" placeholder="delta-tnaA::kan"></div>
+      </div>
+      <div class="field" style="margin-bottom:1rem"><label for="a-notes">Notes</label>
+        <textarea class="filter-input" id="a-notes" placeholder="Isolation details, selection, anything relevant"></textarea></div>
+      <div class="verdict" id="verdict"></div>
+      <button class="btn" id="check">Check registration status</button>
+      <button class="btn btn-green" id="save" hidden>Save strain</button>
+      <button class="btn btn-outline" id="retire" hidden>Retire this strain</button>
+      <button class="btn btn-outline" id="cancel" hidden>Cancel edit</button>
+      <div class="msg" id="addmsg"></div>
+    </section>
+
+    <section class="panel" id="panel-regs">
+      <div class="callout orange">
+        <p>Records marked <strong>draft</strong> are written but not yet submitted to Yale EHS.
+        Do not begin work on a draft organism until the PI confirms approval.</p>
+      </div>
+      <div id="reglist"></div>
+    </section>
+
+    <section class="panel" id="panel-deck">
+      <div class="toolbar">
+        <button class="btn btn-outline" id="deckopen">Open in a new tab</button>
+        <span class="count">Onboarding for members who already have BSL-1 training.</span>
+      </div>
+      <iframe class="deck-frame" id="deckframe" title="BSL-2 onboarding deck"></iframe>
+    </section>
+
+    <p class="count" id="stamp" style="margin-top:2rem"></p>
+  </div>
+</div>
+
+<script>
+// This site is served from Cloudflare Pages, where Netlify functions do not run
+// and /.netlify/functions/* returns the HTML 404 page. Try the Pages Function
+// first and fall back, so the page works on either host.
+const ENDPOINTS = ['/api/github', '/.netlify/functions/github'];
+let FN = ENDPOINTS[0];
+let PW = '', DATA = null;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c =>
+  ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+
+async function post(url, payload) {
+  const r = await fetch(url, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const ct = r.headers.get('content-type') || '';
+  // A host that does not run this function answers with its HTML 404 page.
+  if (!ct.includes('application/json')) return { missing: true, status: r.status };
+  const j = await r.json().catch(() => ({}));
+  return { missing: false, ok: r.ok, status: r.status, body: j };
+}
+
+async function call(payload) {
+  let res = await post(FN, payload);
+  if (res.missing) {
+    for (const alt of ENDPOINTS) {
+      if (alt === FN) continue;
+      const tryAlt = await post(alt, payload);
+      if (!tryAlt.missing) { FN = alt; res = tryAlt; break; }
+    }
+  }
+  if (res.missing) {
+    throw new Error('The server function is not responding at ' + ENDPOINTS.join(' or ') +
+      '. It may not be deployed on this host yet.');
+  }
+  if (!res.ok) throw new Error(res.body.error || ('Request failed (' + res.status + ')'));
+  return res.body;
+}
+
+async function unlock() {
+  const pw = $('pw').value.trim();
+  if (!pw) return;
+  $('gate-err').textContent = '';
+  $('unlock').disabled = true; $('unlock').textContent = 'Checking...';
+  try {
+    DATA = await call({ action: 'ehsUnlock', password: pw });
+    PW = pw;
+    try { sessionStorage.setItem('ehs-pw', pw); } catch (e) {}
+    $('gate').hidden = true; $('app').hidden = false;
+    render();
+  } catch (e) {
+    $('gate-err').textContent = e.message;
+    try { sessionStorage.removeItem('ehs-pw'); } catch (e2) {}
+  } finally {
+    $('unlock').disabled = false; $('unlock').textContent = 'Unlock';
+  }
+}
+$('unlock').onclick = unlock;
+$('pw').addEventListener('keydown', e => { if (e.key === 'Enter') unlock(); });
+try {
+  const saved = sessionStorage.getItem('ehs-pw');
+  if (saved) { $('pw').value = saved; unlock(); }
+} catch (e) {}
+
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  $('panel-' + t.dataset.panel).classList.add('active');
+  if (t.dataset.panel === 'deck') loadDeck();
+});
+
+const LABEL = {
+  registered: 'registered', needs_registration: 'needs registration',
+  rg1: 'RG1', unknown: 'unidentified',
+};
+
+function stats() {
+  const c = {};
+  DATA.strains.forEach(s => c[s.registration_status] = (c[s.registration_status] || 0) + 1);
+  const cells = [
+    ['Strains total', DATA.strains.length, 'var(--accent)'],
+    ['Covered by a registration', c.registered || 0, 'var(--accent2)'],
+    ['Need a registration', c.needs_registration || 0, 'var(--accent3)'],
+    ['Unidentified', c.unknown || 0, 'var(--accent5)'],
+    ['Registrations on file', DATA.registrations.length, 'var(--accent4)'],
+  ];
+  $('stats').innerHTML = cells.map(function (x) {
+    return '<div class="stat" style="--stat-accent:' + x[2] + '"><div class="n">' +
+           x[1] + '</div><div class="l">' + x[0] + '</div></div>';
+  }).join('');
+}
+
+function rows() {
+  const q = $('q').value.toLowerCase();
+  const fs = $('fstatus').value, fh = $('fsheet').value;
+  const list = DATA.strains.filter(s =>
+    (!fs || s.registration_status === fs) &&
+    (!fh || s.sheet === fh) &&
+    (!q || [s.strain_id, s.species, s.source, s.notes, s.genotype]
+      .join(' ').toLowerCase().includes(q)));
+  $('count').textContent = list.length + ' of ' + DATA.strains.length;
+  $('rows').innerHTML = list.map(s =>
+    '<tr><td><span class="sid">' + esc(s.strain_id) + '</span></td>' +
+    '<td><span class="sp">' + esc(s.species) + '</span>' +
+      (s.retired ? ' <span class="pill needs_registration">retired</span>' : '') +
+      (s.origin === 'wiki' ? ' <span class="pill rg1">wiki</span>' : '') +
+      (s.genotype ? '<br><span class="count">' + esc(s.genotype) + '</span>' : '') + '</td>' +
+    '<td><span class="count">' + esc(s.sheet || '') + '</span></td>' +
+    '<td>' + esc(s.source || '&mdash;') + '</td>' +
+    '<td><span class="pill ' + s.registration_status + '">' +
+      (LABEL[s.registration_status] || s.registration_status) + '</span></td>' +
+    '<td class="note-cell">' + esc(s.registration_note || '') + '</td>' +
+    '<td><button class="btn btn-outline btn-xs" data-edit="' + esc(s.strain_id) +
+      '" data-sp="' + esc(s.species) + '">Edit</button></td></tr>'
+  ).join('') || '<tr><td colspan="7" class="note-cell">No strains match.</td></tr>';
+  document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () =>
+    startEdit(b.dataset.edit, b.dataset.sp));
+}
+['q', 'fstatus', 'fsheet'].forEach(id => $(id).addEventListener('input', rows));
+
+function regs() {
+  const accents = ['var(--accent)','var(--accent2)','var(--accent4)','var(--accent5)','var(--accent3)'];
+  $('reglist').innerHTML = DATA.registrations.map((r, i) =>
+    '<div class="reg-card" style="--card-accent:' + accents[i % accents.length] + '">' +
+    '<h3>' + esc(r.organism) + '</h3>' +
+    '<div class="meta">RG' + esc(r.risk_group) + ' &middot; ' + esc(r.bsl) +
+      ' &middot; <span class="pill ' + esc(r.status) + '">' + esc(r.status) + '</span></div>' +
+    '<div class="note-cell" style="max-width:none"><strong>Strains:</strong> ' +
+      esc(r.strains || '&mdash;') + '<br><strong>Source:</strong> ' + esc(r.source || '&mdash;') + '</div>' +
+    '<details><summary>Risk assessment</summary><p class="ra">' +
+      esc(r.risk_assessment) + '</p></details></div>'
+  ).join('');
+}
+
+function classify(species) {
+  const sp = (species || '').trim();
+  if (!sp) return { status: 'unknown', note: 'Enter a genus and species to check.' };
+  const genus = sp.split(/[/\s]/)[0];
+  // A genus-level identification is not a pathogen call. See the skill's decision rules.
+  const ambiguous = /[/(]|\bunclear\b|\bquestionable\b|\?/.test(sp);
+  const genusOnly = ambiguous || sp.trim().split(/\s+/).length < 2 || /\bspp?\.?$/i.test(sp);
+  const w = DATA.watchlist || {};
+  const cleared = w.cleared || [];
+  for (let i = 0; i < cleared.length; i++) {
+    if (sp.toLowerCase().indexOf(cleared[i].toLowerCase()) === 0)
+      return { status: 'rg1', note: 'Risk Group 1. No pathogen registration required.' };
+  }
+  for (let j = 0; j < DATA.registrations.length; j++) {
+    const r = DATA.registrations[j];
+    const names = [r.organism].concat(r.covers || []);
+    for (let k = 0; k < names.length; k++) {
+      const n = names[k];
+      if (n.slice(-4) === 'spp.') continue;
+      if (sp.toLowerCase().indexOf(n.toLowerCase()) === 0)
+        return { status: 'registered', slug: r.slug,
+                 note: 'Covered by the ' + r.organism + ' registration (' + r.status + ').' };
+    }
+  }
+  if (genusOnly && (w.genus || {})[genus])
+    return { status: 'identify_first',
+             note: 'Identified only to genus. ' + w.genus[genus] +
+                   ' Identify to species before assuming a registration is needed.' };
+  for (let j = 0; j < DATA.registrations.length; j++) {
+    const r = DATA.registrations[j];
+    const coversGenus = r.organism.indexOf('spp.') >= 0 ||
+      (r.covers || []).some(c => c.slice(-4) === 'spp.');
+    if (coversGenus && genus === r.genus)
+      return { status: 'registered', slug: r.slug,
+               note: 'Genus covered by the ' + r.organism + ' registration (' + r.status + ').' };
+  }
+  const wsp = w.species || {};
+  for (const key in wsp) {
+    if (sp.toLowerCase().indexOf(key.toLowerCase()) === 0)
+      return { status: 'needs_registration', note: wsp[key] };
+  }
+  if ((w.genus || {})[genus]) return { status: 'needs_registration', note: w.genus[genus] };
+  return { status: 'rg1', note: 'Not on the human-pathogen watchlist. No registration expected.' };
+}
+
+let pending = null, editing = null;
+
+function fillForm(s) {
+  $('a-id').value = s.strain_id || '';
+  $('a-sp').value = s.species === 'unidentified' ? '' : (s.species || '');
+  $('a-src').value = s.source || '';
+  $('a-geno').value = s.genotype || '';
+  $('a-notes').value = s.notes || '';
+  // Preserve a collection that is no longer offered for new strains (e.g. a personal
+  // collection). Without this the select silently falls back to the first option and
+  // editing would quietly reassign the strain.
+  const sel = $('a-sheet');
+  if (s.sheet) {
+    if (![...sel.options].some(o => o.value === s.sheet)) {
+      const o = document.createElement('option');
+      o.value = s.sheet;
+      o.textContent = s.sheet + ' (legacy, not available for new strains)';
+      sel.appendChild(o);
+    }
+    sel.value = s.sheet;
+  }
+}
+
+function startEdit(id, sp) {
+  const s = DATA.strains.find(x => x.strain_id === id && x.species === sp);
+  if (!s) return;
+  editing = s;
+  fillForm(s);
+  $('formtitle').textContent = 'Editing ' + id;
+  $('a-id').disabled = true;
+  $('retire').hidden = !!s.retired;
+  $('cancel').hidden = false;
+  $('verdict').innerHTML = '';
+  $('save').hidden = true;
+  $('addmsg').textContent = '';
+  document.querySelector('[data-panel="add"]').click();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+$('cancel').onclick = () => resetForm();
+
+function resetForm() {
+  editing = null; pending = null;
+  const sel = $('a-sheet');
+  [...sel.options].forEach(o => { if (o.textContent.indexOf('(legacy') >= 0) o.remove(); });
+  sel.selectedIndex = 0;
+  ['a-id','a-sp','a-src','a-geno','a-notes'].forEach(i => $(i).value = '');
+  $('a-id').disabled = false;
+  $('formtitle').textContent = 'Add a strain';
+  $('verdict').innerHTML = '';
+  $('save').hidden = true; $('retire').hidden = true; $('cancel').hidden = true;
+}
+
+$('check').onclick = () => {
+  const sp = $('a-sp').value.trim();
+  const id = $('a-id').value.trim();
+  $('addmsg').textContent = '';
+  if (!id) {
+    $('verdict').innerHTML = '<div class="callout red"><p>A strain ID is required.</p></div>';
+    return;
+  }
+  const v = classify(sp);
+  pending = { verdict: v };
+  const boxes = {
+    registered: ['green', 'Covered by an existing registration',
+      'You can work with this strain under the existing registration, at the biosafety level it specifies.'],
+    needs_registration: ['red', 'Registration required before use',
+      'This species is a human pathogen candidate with no registration on file. Saving will open a registration request for the PI. Do not begin work until the registration is approved.'],
+    rg1: ['green', 'No registration needed',
+      'This species is not a registered-pathogen candidate. Standard BSL-1 practice applies.'],
+    unknown: ['orange', 'Species not identified',
+      'Identify the isolate by 16S before use. Until then, handle it as if it were BSL-2.'],
+  }[v.status];
+  $('verdict').innerHTML = '<div class="callout ' + boxes[0] + '">' +
+    '<h3 style="margin:0 0 .4rem;font-size:14.5px">' + boxes[1] + '</h3>' +
+    '<p style="margin:0 0 .5rem">' + esc(v.note) + '</p>' +
+    '<p style="margin:0;font-size:13px;color:var(--text-dim)">' + boxes[2] + '</p></div>';
+  $('save').hidden = false;
+  $('save').textContent = editing ? 'Save changes'
+    : (v.status === 'needs_registration' ? 'Save and notify the PI' : 'Save strain');
+};
+
+function formStrain(v) {
+  return {
+    strain_id: $('a-id').value.trim(),
+    species: $('a-sp').value.trim() || 'unidentified',
+    species_raw: $('a-sp').value.trim(),
+    source: $('a-src').value.trim(),
+    notes: $('a-notes').value.trim(),
+    genotype: $('a-geno').value.trim(),
+    sheet: $('a-sheet').value,
+    edited_by: $('a-who').value.trim(),
+    added_by: $('a-who').value.trim(),
+    registration_status: v.status,
+    registration_note: v.note,
+    registration_slug: v.slug || null,
+  };
+}
+
+async function submit(op, reason) {
+  const v = (pending && pending.verdict) || classify($('a-sp').value.trim());
+  const strain = formStrain(v);
+  const btn = op === 'retire' ? $('retire') : $('save');
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.textContent = 'Saving...';
+  $('addmsg').className = 'msg'; $('addmsg').textContent = '';
+  try {
+    await call({
+      action: 'ehsSaveStrain', password: PW, op: op, strain: strain, reason: reason,
+      fromSheet: !!(editing && editing.origin !== 'wiki'),
+      sheetStrainIds: DATA.strains.filter(s => s.origin !== 'wiki').map(s => s.strain_id),
+    });
+    const n = await call({ action: 'ehsNotify', password: PW, op: op, reason: reason,
+      strain_id: strain.strain_id, species: strain.species, source: strain.source,
+      added_by: strain.edited_by, note: v.note, status: v.status });
+    const extra = (op !== 'retire' && (v.status === 'needs_registration' || v.status === 'unknown'))
+      ? ' Registration request opened for the PI (#' + n.issue + ').'
+      : ' The PI was notified (#' + n.issue + ').';
+    $('addmsg').className = 'msg ok';
+    $('addmsg').textContent =
+      (op === 'add' ? 'Added ' : op === 'retire' ? 'Retired ' : 'Updated ') +
+      strain.strain_id + '.' + extra;
+
+    const i = DATA.strains.findIndex(s =>
+      s.strain_id === strain.strain_id && s.species === strain.species);
+    strain.origin = 'wiki';
+    if (op === 'retire') strain.retired = true;
+    if (i >= 0) DATA.strains[i] = strain; else DATA.strains.push(strain);
+    stats(); rows(); sheetOptions(); resetForm();
+  } catch (e) {
+    $('addmsg').className = 'msg bad';
+    $('addmsg').textContent = e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = label;
+  }
+}
+
+$('save').onclick = () => submit(editing ? 'update' : 'add');
+$('retire').onclick = () => {
+  const why = prompt('Why is this strain being retired? (discarded, contaminated, misidentified)');
+  if (why === null) return;
+  submit('retire', why);
+};
+
+let deckHtml = null;
+async function loadDeck() {
+  if (deckHtml) return;
+  try {
+    const r = await call({ action: 'ehsDeck', password: PW });
+    deckHtml = r.html;
+    $('deckframe').srcdoc = deckHtml;
+  } catch (e) {
+    $('panel-deck').insertAdjacentHTML('afterbegin',
+      '<div class="callout red"><p>' + esc(e.message) + '</p></div>');
+  }
+}
+$('deckopen').onclick = () => {
+  if (!deckHtml) return;
+  const w = window.open('', '_blank');
+  w.document.write(deckHtml); w.document.close();
+};
+
+function sheetOptions() {
+  const sheets = Array.from(new Set(DATA.strains.map(s => s.sheet).filter(Boolean))).sort();
+  const cur = $('fsheet').value;
+  // Collections that exist in the data but are closed to new entries. They stay
+  // browsable and editable; they are just not offered on the add form.
+  const OPEN = ['MOYb', 'External'];
+  $('fsheet').innerHTML = '<option value="">All collections</option>' +
+    sheets.map(s => '<option value="' + esc(s) + '"' + (s === cur ? ' selected' : '') + '>' +
+      esc(s) + (OPEN.indexOf(s) < 0 ? ' (closed)' : '') + '</option>').join('');
+}
+function render() {
+  sheetOptions(); stats(); rows(); regs();
+  $('stamp').textContent = DATA.generated
+    ? 'Data generated ' + DATA.generated + ' from the EHS repository.' : '';
+}
+</script>
+</body>
+</html>

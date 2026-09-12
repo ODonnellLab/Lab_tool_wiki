@@ -10,6 +10,9 @@
  *   ADMIN_PASSWORD    Password for destructive operations (Clear All)
  *
  * ── Per-database repos (add one per database) ──────────────────────────────
+ *   REPO_EHS            Bacteria strains + EHS registrations (default: EHS, private)
+ *   BIOSAFETY_PASSWORD  Password gating the bacteria strains page
+ *   NOTIFY_ISSUE_REPO   Repo for registration-request issues (default: REPO_EHS)
  *   REPO_INDEXES      Sequencing indexes  (default: lab-sequencing-tools)
  *   REPO_STRAINS      Strain database     (default: lab-strains)
  *   REPO_PLASMIDS     Plasmid registry    (default: lab-plasmids)
@@ -24,6 +27,7 @@
  */
 
 const DB_REPOS = {
+  ehs:      process.env.REPO_EHS      || 'EHS',
   indexes:  process.env.REPO_INDEXES  || 'lab-sequencing-tools',
   strains:  process.env.REPO_STRAINS  || 'lab-strains',
   plasmids: process.env.REPO_PLASMIDS || 'lab-plasmids',
@@ -31,6 +35,7 @@ const DB_REPOS = {
 };
 
 const DB_FILES = {
+  ehs:      'web/strains.json',
   indexes:  'lab_indexes.json',
   strains:  'strains.json',
   plasmids: 'plasmids.json',
@@ -133,6 +138,194 @@ exports.handler = async (event) => {
         return err(r.status, e.message || `Archive failed ${r.status}`);
       }
       return ok({ ok: true });
+    }
+
+    // ── Bacteria strains page (password-gated) ────────────────────────────
+    // All three actions require BIOSAFETY_PASSWORD. The password is compared
+    // only here, server-side; no gated content is served without it.
+    const BIO_PW  = process.env.BIOSAFETY_PASSWORD || '';
+    const EHS_REPO = process.env.REPO_EHS || 'EHS';
+
+    const readEhsJson = async (path) => {
+      const url = `https://api.github.com/repos/${OWNER}/${EHS_REPO}/contents/${path}`
+                + `?ref=${BRANCH}&_=${Date.now()}`;
+      const r = await fetch(url, { headers: ghHeaders });
+      if (r.status === 404) return { data: null, sha: null };
+      if (r.status === 401) throw new Error('token_expired');
+      if (!r.ok) throw new Error(`GitHub read error ${r.status} for ${path}`);
+      const j = await r.json();
+      const raw = Buffer.from(j.content.replace(/\n/g, ''), 'base64').toString('utf8');
+      return { data: JSON.parse(raw), sha: j.sha };
+    };
+
+    const readEhsRaw = async (path) => {
+      const url = `https://api.github.com/repos/${OWNER}/${EHS_REPO}/contents/${path}`
+                + `?ref=${BRANCH}&_=${Date.now()}`;
+      const r = await fetch(url, { headers: ghHeaders });
+      if (!r.ok) return null;
+      const j = await r.json();
+      return Buffer.from(j.content.replace(/\n/g, ''), 'base64').toString('utf8');
+    };
+
+    // UNLOCK — verify password, then return the gated payload
+    if (action === 'ehsUnlock') {
+      if (!BIO_PW) return err(500, 'BIOSAFETY_PASSWORD not set in environment variables.');
+      if (body.password !== BIO_PW) return err(401, 'Incorrect password.');
+      const [regs, strains, watch] = await Promise.all([
+        readEhsJson('web/registrations.json'),
+        readEhsJson('web/strains.json'),
+        readEhsJson('web/watchlist.json'),
+      ]);
+      return ok({
+        registrations: regs.data?.data || [],
+        strains:       strains.data?.data || [],
+        watchlist:     watch.data?.data || {},
+        generated:     regs.data?.generated || null,
+      });
+    }
+
+    // TRAINING DECK — gated BSL-2 onboarding slides, served as raw HTML
+    if (action === 'ehsDeck') {
+      if (!BIO_PW) return err(500, 'BIOSAFETY_PASSWORD not set in environment variables.');
+      if (body.password !== BIO_PW) return err(401, 'Incorrect password.');
+      const html = await readEhsRaw('deck/index.html');
+      if (!html) return err(404, 'Training deck not found in the EHS repo.');
+      return ok({ html });
+    }
+
+    // SAVE STRAIN — add, edit or retire an entry in web/strains-additions.json.
+    //
+    // Writes never touch web/strains.json, which scripts/build_web_data.py
+    // regenerates from the strain sheets and would clobber. The build script
+    // merges additions on top of the sheet-derived rows instead, so wiki edits
+    // survive every rebuild and can override a sheet row by strain_id.
+    //
+    // Every write is committed under the editor's name and raises a
+    // notification issue. There is no silent write path.
+    if (action === 'ehsSaveStrain') {
+      if (!BIO_PW) return err(500, 'BIOSAFETY_PASSWORD not set in environment variables.');
+      if (body.password !== BIO_PW) return err(401, 'Incorrect password.');
+      const op = body.op || 'add';
+      const entry = body.strain || {};
+      if (!entry.strain_id) return err(400, 'strain_id is required.');
+      const FILE = 'web/strains-additions.json';
+      const current = await readEhsJson(FILE);
+      const payload = current.data || { generated: null, data: [] };
+      const list = payload.data || [];
+      const key = s => `${s.strain_id}::${s.species || ''}`;
+      const idx = list.findIndex(s => key(s) === key(entry));
+      const now = new Date().toISOString().slice(0, 19);
+
+      if (op === 'add') {
+        if (idx >= 0) return err(409, `Strain "${entry.strain_id}" is already in the wiki list.`);
+        if ((body.sheetStrainIds || []).includes(entry.strain_id)) {
+          entry.overrides_sheet = true;
+        }
+        entry.origin = 'wiki';
+        entry.added_on = now;
+        entry.history = [`${now} added by ${entry.edited_by || 'unknown'}`];
+        list.push(entry);
+      } else if (op === 'update') {
+        const prior = idx >= 0 ? list[idx] : null;
+        entry.origin = prior?.origin || 'wiki';
+        entry.added_on = prior?.added_on || now;
+        entry.updated_on = now;
+        entry.overrides_sheet = prior?.overrides_sheet ?? !!body.fromSheet;
+        entry.history = (prior?.history || []).concat(
+          `${now} edited by ${entry.edited_by || 'unknown'}`);
+        if (idx >= 0) list[idx] = entry; else list.push(entry);
+      } else if (op === 'retire') {
+        const prior = idx >= 0 ? list[idx] : entry;
+        prior.retired = true;
+        prior.retired_on = now;
+        prior.retired_reason = body.reason || '';
+        prior.overrides_sheet = prior.overrides_sheet ?? !!body.fromSheet;
+        prior.history = (prior.history || []).concat(
+          `${now} retired by ${entry.edited_by || 'unknown'}`);
+        if (idx >= 0) list[idx] = prior; else list.push(prior);
+      } else {
+        return err(400, `Unknown op "${op}". Use add, update or retire.`);
+      }
+
+      payload.data = list;
+      payload.generated = now;
+      const content = Buffer.from(JSON.stringify(payload, null, 2)).toString('base64');
+      const put = {
+        message: `${op} strain ${entry.strain_id} (${entry.species || 'unidentified'})`
+               + ` via wiki by ${entry.edited_by || 'unknown'}`,
+        content, branch: BRANCH,
+      };
+      if (current.sha) put.sha = current.sha;
+      const r = await fetch(
+        `https://api.github.com/repos/${OWNER}/${EHS_REPO}/contents/${FILE}`,
+        { method: 'PUT', headers: ghHeaders, body: JSON.stringify(put) });
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({}));
+        return err(r.status, e.message || `Write failed ${r.status}`);
+      }
+      return ok({ saved: entry.strain_id, op });
+    }
+
+    // NOTIFY — open a GitHub issue asking the PI to file a registration
+    if (action === 'ehsNotify') {
+      if (!BIO_PW) return err(500, 'BIOSAFETY_PASSWORD not set in environment variables.');
+      if (body.password !== BIO_PW) return err(401, 'Incorrect password.');
+      const repo = process.env.NOTIFY_ISSUE_REPO || EHS_REPO;
+      const { strain_id, species, note, added_by, source, status, op, reason } = body;
+      const needsReg = status === 'needs_registration' || status === 'unknown';
+      const verb = op === 'update' ? 'edited' : op === 'retire' ? 'retired' : 'added';
+      const title = needsReg && op !== 'retire'
+        ? `Registration needed: ${species || 'unidentified'} (${strain_id})`
+        : `Strain ${verb} via wiki: ${species || 'unidentified'} (${strain_id})`;
+      const lines = [
+        needsReg && op !== 'retire'
+          ? `A strain was ${verb} on the lab wiki and its species has no EHS registration on file.`
+          : `A strain was ${verb} on the lab wiki. Every change raises an issue so nothing`
+            + ' changes unnoticed.',
+        '',
+        '| Field | Value |',
+        '|---|---|',
+        `| Change | ${verb} |`,
+        `| Strain ID | ${strain_id || '—'} |`,
+        `| Species | ${species || 'unidentified'} |`,
+        `| Source | ${source || '—'} |`,
+        `| By | ${added_by || 'unknown'} |`,
+        `| Screening result | ${status || 'unknown'} |`,
+        `| Note | ${note || '—'} |`,
+      ];
+      if (reason) lines.push(`| Reason | ${reason} |`);
+      lines.push(
+        '',
+        'The change is recorded in `web/strains-additions.json`, which the build script merges',
+        'on top of the sheet-derived rows. Nothing in `web/strains.json` was overwritten, and',
+        'the entry keeps a `history` field listing who changed it and when.',
+        '');
+      if (needsReg) {
+        lines.push(
+          '**Next step:** if this is a human pathogen it needs a Connecticut state registration',
+          'before anyone works with it. Draft one with the `pathogen-risk-assessment` skill:',
+          '',
+          '```',
+          `/pathogen-risk-assessment ${species || strain_id}`,
+          '```',
+          '',
+          'Then submit through Yale EHS and set `status: approved` on the record.',
+          '');
+      }
+      lines.push('_Opened automatically from the lab wiki bacteria strains page._');
+      const r = await fetch(`https://api.github.com/repos/${OWNER}/${repo}/issues`, {
+        method: 'POST', headers: ghHeaders,
+        body: JSON.stringify({
+          title, body: lines.join('\n'),
+          labels: needsReg ? ['registration-needed', 'strain-added'] : ['strain-added'],
+        }),
+      });
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({}));
+        return err(r.status, e.message || `Issue creation failed ${r.status}`);
+      }
+      const j = await r.json();
+      return ok({ issue: j.number, url: j.html_url });
     }
 
     return err(400, `Unknown action: "${action}"`);
