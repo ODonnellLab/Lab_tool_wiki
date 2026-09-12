@@ -26,8 +26,11 @@
  *   POST { action:"checkPassword", password } returns { ok }
  */
 
+// NOTE: the EHS repo is deliberately NOT in this map. The generic read/write/
+// archive actions below take no password, so anything listed here is public to
+// anyone who can load the site. EHS data is reached only through the ehs* actions,
+// which check BIOSAFETY_PASSWORD first.
 const DB_REPOS = {
-  ehs:      process.env.REPO_EHS      || 'EHS',
   indexes:  process.env.REPO_INDEXES  || 'lab-sequencing-tools',
   strains:  process.env.REPO_STRAINS  || 'lab-strains',
   plasmids: process.env.REPO_PLASMIDS || 'lab-plasmids',
@@ -35,7 +38,6 @@ const DB_REPOS = {
 };
 
 const DB_FILES = {
-  ehs:      'web/strains.json',
   indexes:  'lab_indexes.json',
   strains:  'strains.json',
   plasmids: 'plasmids.json',

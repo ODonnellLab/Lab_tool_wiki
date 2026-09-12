@@ -45,15 +45,16 @@ async function handle(request, env) {
   const OWNER = env.GITHUB_OWNER || 'ODonnellLab';
   if (!TOKEN) return err(500, 'GITHUB_TOKEN not set in environment variables.');
 
+  // The EHS repo is deliberately NOT in this map: the generic read/write/archive
+  // actions take no password, so anything listed here is public. EHS data is
+  // reached only through the ehs* actions, which check BIOSAFETY_PASSWORD.
   const DB_REPOS = {
-    ehs: env.REPO_EHS || 'EHS',
     indexes: env.REPO_INDEXES || 'lab-sequencing-tools',
     strains: env.REPO_STRAINS || 'lab-strains',
     plasmids: env.REPO_PLASMIDS || 'lab-plasmids',
     reagents: env.REPO_REAGENTS || 'lab-reagents',
   };
   const DB_FILES = {
-    ehs: 'web/strains.json',
     indexes: 'lab_indexes.json',
     strains: 'strains.json',
     plasmids: 'plasmids.json',
@@ -79,7 +80,7 @@ async function handle(request, env) {
   }
   if (!DB_REPOS[db]) return err(400, `Unknown database "${db}".`);
 
-  const EHS_REPO = DB_REPOS.ehs;
+  const EHS_REPO = env.REPO_EHS || 'EHS';
   const BIO_PW = env.BIOSAFETY_PASSWORD || '';
 
   const readJson = async (repo, path) => {
