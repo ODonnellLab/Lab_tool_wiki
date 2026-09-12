@@ -8,11 +8,19 @@ Lab tools, databases, and reference guides. Hosted on Netlify, data stored in pr
 lab-wiki/              ← this repo (public)
 ├── index.html         ← landing page
 ├── sequencing.html    ← Illumina sequencing wiki + index registry
+├── bacteria.html      ← password-gated strain registry + BSL-2 training
 ├── shared.css         ← shared styles used by all pages
 ├── netlify.toml       ← Netlify config
-└── netlify/functions/
-    └── github.js      ← serverless proxy (reads secrets from env vars)
+├── netlify/functions/
+│   └── github.js      ← serverless proxy (reads secrets from env vars)
+└── functions/api/
+    └── github.js      ← same API as a Cloudflare Pages function, for the
+                         pages.dev mirror; unused on Netlify
 ```
+
+Live on Netlify at **odonnell-lab-wiki.netlify.app**. There is also a
+`lab-tool-wiki.pages.dev` Cloudflare mirror, which does not run
+`netlify/functions/`; `functions/api/github.js` covers that host if it is used.
 
 ## Adding a new tool/page
 
@@ -37,9 +45,11 @@ Create these private repos, each with an initial JSON file containing `[]`:
 | Variable | Value |
 |---|---|
 | `GITHUB_TOKEN` | Personal access token (repo scope) from github.com/settings/tokens |
-| `GITHUB_OWNER` | `mikeod38` |
+| `GITHUB_OWNER` | `ODonnellLab` |
 | `ADMIN_PASSWORD` | Password for the Clear All operation |
 | `REPO_INDEXES` | `lab-sequencing-tools` |
+| `REPO_EHS` | `EHS` *(pathogen registrations, private)* |
+| `BIOSAFETY_PASSWORD` | Password gating the Bacteria Strains page |
 | `REPO_STRAINS` | `lab-strains` *(add when ready)* |
 | `REPO_PLASMIDS` | `lab-plasmids` *(add when ready)* |
 | `REPO_REAGENTS` | `lab-reagents` *(add when ready)* |

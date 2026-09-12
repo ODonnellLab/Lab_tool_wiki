@@ -199,10 +199,12 @@
 </div>
 
 <script>
-// This site is served from Cloudflare Pages, where Netlify functions do not run
-// and /.netlify/functions/* returns the HTML 404 page. Try the Pages Function
-// first and fall back, so the page works on either host.
-const ENDPOINTS = ['/api/github', '/.netlify/functions/github'];
+// This site is hosted on Netlify (odonnell-lab-wiki.netlify.app), so the Netlify
+// function path is tried first and is the only one normally used. The Cloudflare
+// Pages path is a fallback for the pages.dev mirror, where netlify/functions does
+// not execute. A host that lacks the function answers with its HTML page rather
+// than JSON, which is how the fallback detects it.
+const ENDPOINTS = ['/.netlify/functions/github', '/api/github'];
 let FN = ENDPOINTS[0];
 let PW = '', DATA = null;
 
