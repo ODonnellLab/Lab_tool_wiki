@@ -199,46 +199,29 @@
 </div>
 
 <script>
-// This site is hosted on Netlify (odonnell-lab-wiki.netlify.app), so the Netlify
-// function path is tried first and is the only one normally used. The Cloudflare
-// Pages path is a fallback for the pages.dev mirror, where netlify/functions does
-// not execute. A host that lacks the function answers with its HTML page rather
-// than JSON, which is how the fallback detects it.
-const ENDPOINTS = ['/.netlify/functions/github', '/api/github'];
-let FN = ENDPOINTS[0];
+// The site runs on Netlify (odonnell-lab-wiki.netlify.app), the only host that
+// executes netlify/functions/, so there is exactly one endpoint. A host without the
+// function answers with its HTML 404 page rather than JSON; that is reported as such.
+const FN = '/.netlify/functions/github';
 let PW = '', DATA = null;
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c =>
   ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
 
-async function post(url, payload) {
-  const r = await fetch(url, {
+async function call(payload) {
+  const r = await fetch(FN, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   const ct = r.headers.get('content-type') || '';
-  // A host that does not run this function answers with its HTML 404 page.
-  if (!ct.includes('application/json')) return { missing: true, status: r.status };
+  if (!ct.includes('application/json')) {
+    throw new Error('The server function is not responding at ' + FN +
+      '. This page only works at odonnell-lab-wiki.netlify.app.');
+  }
   const j = await r.json().catch(() => ({}));
-  return { missing: false, ok: r.ok, status: r.status, body: j };
-}
-
-async function call(payload) {
-  let res = await post(FN, payload);
-  if (res.missing) {
-    for (const alt of ENDPOINTS) {
-      if (alt === FN) continue;
-      const tryAlt = await post(alt, payload);
-      if (!tryAlt.missing) { FN = alt; res = tryAlt; break; }
-    }
-  }
-  if (res.missing) {
-    throw new Error('The server function is not responding at ' + ENDPOINTS.join(' or ') +
-      '. It may not be deployed on this host yet.');
-  }
-  if (!res.ok) throw new Error(res.body.error || ('Request failed (' + res.status + ')'));
-  return res.body;
+  if (!r.ok) throw new Error(j.error || ('Request failed (' + r.status + ')'));
+  return j;
 }
 
 async function unlock() {

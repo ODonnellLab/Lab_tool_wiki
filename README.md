@@ -11,16 +11,19 @@ lab-wiki/              ← this repo (public)
 ├── bacteria.html      ← password-gated strain registry + BSL-2 training
 ├── shared.css         ← shared styles used by all pages
 ├── netlify.toml       ← Netlify config
-├── netlify/functions/
-│   └── github.js      ← serverless proxy (reads secrets from env vars)
-└── functions/api/
-    └── github.js      ← same API as a Cloudflare Pages function, for the
-                         pages.dev mirror; unused on Netlify
+└── netlify/functions/
+    └── github.js      ← serverless proxy (reads secrets from env vars)
 ```
 
-Live on Netlify at **odonnell-lab-wiki.netlify.app**. There is also a
-`lab-tool-wiki.pages.dev` Cloudflare mirror, which does not run
-`netlify/functions/`; `functions/api/github.js` covers that host if it is used.
+Live on Netlify at **odonnell-lab-wiki.netlify.app**, and only there.
+
+**Hosting rule for lab sites.** Public static content (the lab website, the game) lives on
+Cloudflare Pages, alongside the DNS. Anything that needs a server function holding secrets —
+this wiki — lives on Netlify, because that is the runtime `netlify/functions/github.js` is
+written for. From 2026-06-05 to 2026-09-13 the lab website linked to a Cloudflare Pages copy
+of this repo at `lab-tool-wiki.pages.dev`; that copy never executed the function, so the index
+registry and the bacteria page were dead there. It has been deleted. Do not stand up a second
+host without porting and testing the function on it first.
 
 ## Adding a new tool/page
 
