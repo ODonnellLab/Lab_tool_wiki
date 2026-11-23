@@ -129,7 +129,7 @@
         <table class="data-table">
           <thead><tr>
             <th>Strain</th><th>Species</th><th>Collection</th><th>Source</th>
-            <th>Status</th><th>Note</th><th></th>
+            <th>Marker</th><th>Status</th><th>Note</th><th></th>
           </tr></thead>
           <tbody id="rows"></tbody>
         </table>
@@ -144,6 +144,29 @@
         lab derives and External for anything obtained from ATCC, the CGC or another lab.
         Personal collections are not an option here. If you keep your own stocks, tell the
         PI and record the freezer location, so the lab can find and account for them.</p>
+        <p><strong>Before you start work on a strain you did not isolate yourself</strong>,
+        you need five things, and they belong here rather than in your notebook:</p>
+        <ol style="margin:.4rem 0 .7rem 1.2rem;padding:0">
+          <li><strong>The designation the source lab uses</strong> &mdash; their strain
+          number, not a label you invented. Yours can be an alias; theirs is the key to
+          everything else.</li>
+          <li><strong>The full genotype as sent</strong>, including every lesion, not just
+          the part you care about.</li>
+          <li><strong>Marker status</strong> &mdash; which resistance markers it carries,
+          and whether any were excised.</li>
+          <li><strong>Who sent it, and when.</strong> Keep the transfer email.</li>
+          <li><strong>A reference</strong>, if the strain is published.</li>
+        </ol>
+        <p><strong>Two traps worth naming.</strong> &ldquo;It needs no selection&rdquo; is
+        not the same as &ldquo;it carries no marker&rdquo;: a chromosomally integrated
+        cassette is maintained without selection, is still present, and still has to be
+        declared on the lab's rDNA registration. And two strains that differ in colour may
+        not be isogenic &mdash; fluorescent pairs are often built on different backgrounds,
+        so read the whole genotype before treating them as a matched set.</p>
+        <p>If you cannot answer all five, ask the source lab before you start, not after.
+        Reconstructing provenance from published strain tables does not work: a genotype
+        string often matches several published strains, and the tubes in our freezer are
+        usually unpublished derivatives of them.</p>
         <p style="margin-bottom:0">You can add, edit and retire entries here.
         Changes are written to a wiki-owned file that the build script merges on top of
         the strain sheets, so an edit survives every rebuild and nothing is silently
@@ -165,8 +188,19 @@
             <option value="MOYb">MOYb (lab isolates)</option>
             <option value="External">External (ATCC, CGC, gift strains)</option>
           </select></div>
-        <div class="field"><label for="a-geno">Genotype or marker</label>
+        <div class="field"><label for="a-geno">Full genotype as sent</label>
           <input class="filter-input" id="a-geno" placeholder="delta-tnaA::kan"></div>
+        <div class="field"><label for="a-srcid">Source lab's designation</label>
+          <input class="filter-input" id="a-srcid" placeholder="their strain number, e.g. WM20"></div>
+        <div class="field"><label for="a-marker">Marker status</label>
+          <select class="filter-select" id="a-marker">
+            <option value="">Select...</option>
+            <option value="none">Never carried one</option>
+            <option value="present">Marker present</option>
+            <option value="excised_verified">Excised, verified on plates</option>
+            <option value="excised_reported">Excised, reported but not verified</option>
+            <option value="unknown">Unknown - ask the source lab</option>
+          </select></div>
       </div>
       <div class="field" style="margin-bottom:1rem"><label for="a-notes">Notes</label>
         <textarea class="filter-input" id="a-notes" placeholder="Isolation details, selection, anything relevant"></textarea></div>
@@ -262,6 +296,17 @@ const LABEL = {
   rg1: 'RG1', unknown: 'unidentified',
 };
 
+const MARKER_LABEL = {
+  none: 'none', present: 'present', excised_verified: 'excised, verified',
+  excised_reported: 'excised, unverified', unknown: 'unknown',
+};
+// Anything unconfirmed reads as a warning: an undeclared marker is a
+// registration problem, so "reported" and "unknown" must not look settled.
+const MARKER_PILL = {
+  none: 'rg1', present: 'registered', excised_verified: 'rg1',
+  excised_reported: 'needs_registration', unknown: 'needs_registration',
+};
+
 function stats() {
   const c = {};
   DATA.strains.forEach(s => c[s.registration_status] = (c[s.registration_status] || 0) + 1);
@@ -284,7 +329,7 @@ function rows() {
   const list = DATA.strains.filter(s =>
     (!fs || s.registration_status === fs) &&
     (!fh || s.sheet === fh) &&
-    (!q || [s.strain_id, s.species, s.source, s.notes, s.genotype]
+    (!q || [s.strain_id, s.species, s.source, s.notes, s.genotype, s.source_designation]
       .join(' ').toLowerCase().includes(q)));
   $('count').textContent = list.length + ' of ' + DATA.strains.length;
   $('rows').innerHTML = list.map(s =>
@@ -294,13 +339,19 @@ function rows() {
       (s.origin === 'wiki' ? ' <span class="pill rg1">wiki</span>' : '') +
       (s.genotype ? '<br><span class="count">' + esc(s.genotype) + '</span>' : '') + '</td>' +
     '<td><span class="count">' + esc(s.sheet || '') + '</span></td>' +
-    '<td>' + esc(s.source || '&mdash;') + '</td>' +
+    '<td>' + esc(s.source || '&mdash;') +
+      (s.source_designation ? '<br><span class="sid">' + esc(s.source_designation) +
+        '</span>' : '') + '</td>' +
+    '<td>' + (s.marker_status
+      ? '<span class="pill ' + MARKER_PILL[s.marker_status] + '">' +
+        esc(MARKER_LABEL[s.marker_status] || s.marker_status) + '</span>'
+      : '<span class="count">&mdash;</span>') + '</td>' +
     '<td><span class="pill ' + s.registration_status + '">' +
       (LABEL[s.registration_status] || s.registration_status) + '</span></td>' +
     '<td class="note-cell">' + esc(s.registration_note || '') + '</td>' +
     '<td><button class="btn btn-outline btn-xs" data-edit="' + esc(s.strain_id) +
       '" data-sp="' + esc(s.species) + '">Edit</button></td></tr>'
-  ).join('') || '<tr><td colspan="7" class="note-cell">No strains match.</td></tr>';
+  ).join('') || '<tr><td colspan="8" class="note-cell">No strains match.</td></tr>';
   document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () =>
     startEdit(b.dataset.edit, b.dataset.sp));
 }
@@ -372,6 +423,8 @@ function fillForm(s) {
   $('a-sp').value = s.species === 'unidentified' ? '' : (s.species || '');
   $('a-src').value = s.source || '';
   $('a-geno').value = s.genotype || '';
+  $('a-srcid').value = s.source_designation || '';
+  $('a-marker').value = s.marker_status || '';
   $('a-notes').value = s.notes || '';
   // Preserve a collection that is no longer offered for new strains (e.g. a personal
   // collection). Without this the select silently falls back to the first option and
@@ -411,7 +464,8 @@ function resetForm() {
   const sel = $('a-sheet');
   [...sel.options].forEach(o => { if (o.textContent.indexOf('(legacy') >= 0) o.remove(); });
   sel.selectedIndex = 0;
-  ['a-id','a-sp','a-src','a-geno','a-notes'].forEach(i => $(i).value = '');
+  ['a-id','a-sp','a-src','a-geno','a-srcid','a-notes'].forEach(i => $(i).value = '');
+  $('a-marker').value = '';
   $('a-id').disabled = false;
   $('formtitle').textContent = 'Add a strain';
   $('verdict').innerHTML = '';
@@ -455,6 +509,8 @@ function formStrain(v) {
     source: $('a-src').value.trim(),
     notes: $('a-notes').value.trim(),
     genotype: $('a-geno').value.trim(),
+    source_designation: $('a-srcid').value.trim(),
+    marker_status: $('a-marker').value,
     sheet: $('a-sheet').value,
     edited_by: $('a-who').value.trim(),
     added_by: $('a-who').value.trim(),
